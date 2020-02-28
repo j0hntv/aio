@@ -2,6 +2,7 @@ import asyncio
 import curses
 import random
 import time
+from curses_tools import draw_frame
 
 
 STAR_SYMBOLS = '+*.:'
@@ -34,6 +35,26 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         row += rows_speed
         column += columns_speed
 
+def get_rocket_animation():
+    with open('animations/rocket_frame_1.txt') as file:
+        rocket_frame1 = file.read()
+    with open('animations/rocket_frame_2.txt') as file:
+        rocket_frame2 = file.read()
+    return rocket_frame1, rocket_frame2
+    
+
+async def animate_spaceship(canvas, frame1, frame2):
+    while True:
+        draw_frame(canvas, curses.LINES//2, curses.COLS//2, frame1)
+        await asyncio.sleep(0)
+
+        draw_frame(canvas, curses.LINES//2, curses.COLS//2, frame1, negative=True)
+        draw_frame(canvas, curses.LINES//2, curses.COLS//2, frame2)
+        await asyncio.sleep(0)
+
+        draw_frame(canvas, curses.LINES//2, curses.COLS//2, frame2, negative=True)
+
+
 async def blink(canvas, row, column):
     symbol = random.choice(STAR_SYMBOLS)
     while True:
@@ -60,12 +81,15 @@ def get_star_random_position(canvas):
     return row, col
 
 def draw(canvas):
+    rocket_frame1, rocket_frame2 = get_rocket_animation()
     curses.curs_set(False)
     canvas.border()
     coroutines = [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
     fire_coroutine = fire(canvas, curses.LINES//2, curses.COLS//2)
+    animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
     coroutines.insert(0, fire_coroutine)
-    
+    coroutines.insert(1, animate_spaceship_coroutine)
+
     while True:
         for coroutine in coroutines.copy():
             try:
