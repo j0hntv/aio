@@ -11,30 +11,30 @@ async def blink(canvas, row, column):
     symbol = random.choice(STAR_SYMBOLS)
     while True:
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(10):
+        for _ in range(random.randrange(20)):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(3):
+        for _ in range(random.randrange(5)):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(5):
+        for _ in range(random.randrange(10)):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(3):
+        for _ in range(random.randrange(5)):
             await asyncio.sleep(0)
 
 def get_star_random_position(curses):
     row = random.randrange(1, curses.LINES-1)
-    col = random.randrange(2, curses.COLS-2)
+    col = random.randrange(1, curses.COLS-1)
     return row, col
 
 def draw(canvas):
     curses.curs_set(False)
     canvas.border()
-    coroutines = [blink(canvas, *get_star_random_position(curses)) for i in range(5)]
+    coroutines = [blink(canvas, *get_star_random_position(curses)) for i in range(100)]
     while True:
         for coroutine in coroutines:
             coroutine.send(None)
