@@ -45,34 +45,35 @@ def get_rocket_animation():
     
 
 async def animate_spaceship(canvas, frame1, frame2):
-    row, col = curses.LINES//2, curses.COLS//2
+    row, column = curses.LINES//2, curses.COLS//2
     while True:
         rows_direction, columns_direction, _ = read_controls(canvas)
         row += rows_direction
-        col += columns_direction
+        column += columns_direction
 
         rows, columns = canvas.getmaxyx()
         frame_rows, frame_columns = get_frame_size(frame1)
 
         if row <= 1:
             row = 1
-        if col <= 1:
-            col = 1
+
+        if column <= 1:
+            column = 1
 
         if row  >= rows - frame_rows:
             row = rows - frame_rows - 1
 
-        if col  >= columns - frame_columns:
-            col = columns - frame_columns - 1
+        if column >= columns - frame_columns:
+            column = columns - frame_columns - 1
 
-        draw_frame(canvas, row, col, frame1)
+        draw_frame(canvas, row, column, frame1)
         await asyncio.sleep(0)
 
-        draw_frame(canvas, row, col, frame1, negative=True)
-        draw_frame(canvas, row, col, frame2)
+        draw_frame(canvas, row, column, frame1, negative=True)
+        draw_frame(canvas, row, column, frame2)
         await asyncio.sleep(0)
 
-        draw_frame(canvas, row, col, frame2, negative=True)
+        draw_frame(canvas, row, column, frame2, negative=True)
 
 
 async def blink(canvas, row, column):
@@ -95,10 +96,10 @@ async def blink(canvas, row, column):
             await asyncio.sleep(0)
 
 def get_star_random_position(canvas):
-    rows, cols = canvas.getmaxyx()
+    rows, columns = canvas.getmaxyx()
     row = random.randrange(1, rows-1)
-    col = random.randrange(1, cols-1)
-    return row, col
+    column = random.randrange(1, columns-1)
+    return row, column
 
 def draw(canvas):
     canvas.nodelay(True)
