@@ -1,12 +1,13 @@
 import asyncio
 import curses
 import random
+import sys
 import time
-from curses_tools import draw_frame
+from curses_tools import draw_frame, read_controls, get_frame_size
 
-
-STAR_SYMBOLS = '+*.:'
+STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
+
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     row, column = start_row, start_column
@@ -44,15 +45,19 @@ def get_rocket_animation():
     
 
 async def animate_spaceship(canvas, frame1, frame2):
+    row, col = curses.LINES//2, curses.COLS//2
     while True:
-        draw_frame(canvas, curses.LINES//2, curses.COLS//2, frame1)
+        rows_direction, columns_direction, _ = read_controls(canvas)
+        row += rows_direction
+        col += columns_direction
+        draw_frame(canvas, row, col, frame1)
         await asyncio.sleep(0)
 
-        draw_frame(canvas, curses.LINES//2, curses.COLS//2, frame1, negative=True)
-        draw_frame(canvas, curses.LINES//2, curses.COLS//2, frame2)
+        draw_frame(canvas, row, col, frame1, negative=True)
+        draw_frame(canvas, row, col, frame2)
         await asyncio.sleep(0)
 
-        draw_frame(canvas, curses.LINES//2, curses.COLS//2, frame2, negative=True)
+        draw_frame(canvas, row, col, frame2, negative=True)
 
 
 async def blink(canvas, row, column):
@@ -81,6 +86,7 @@ def get_star_random_position(canvas):
     return row, col
 
 def draw(canvas):
+    canvas.nodelay(True)
     rocket_frame1, rocket_frame2 = get_rocket_animation()
     curses.curs_set(False)
     canvas.border()
@@ -102,4 +108,7 @@ def draw(canvas):
 
 if __name__ == '__main__':
     curses.update_lines_cols()
-    curses.wrapper(draw)
+    try:
+        curses.wrapper(draw)
+    except KeyboardInterrupt:
+        sys.exit()
