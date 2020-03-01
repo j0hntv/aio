@@ -1,4 +1,4 @@
-# Space Game
+# Through_The_Garbage_To_The_Stars
 
 Космический мега-шутер от третьего лица.
 
