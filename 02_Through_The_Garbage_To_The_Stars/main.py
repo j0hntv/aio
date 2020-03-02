@@ -4,6 +4,8 @@ import random
 import sys
 import time
 from curses_tools import draw_frame, read_controls, get_frame_size
+from space_garbage import fly_garbage
+
 
 STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
@@ -35,6 +37,24 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         canvas.addstr(round(row), round(column), ' ')
         row += rows_speed
         column += columns_speed
+
+
+def get_garbage_frames():
+    garbage_files = (
+        'animations/duck.txt',
+        'animations/hubble.txt',
+        'animations/lamp.txt',
+        'animations/trash_large.txt',
+        'animations/trash_small.txt',
+        'animations/trash_xl.txt'
+        )
+    garbage_frames = []
+    for garbage_file in garbage_files:
+        with open(garbage_file) as file:
+            garbage_frames.append(file.read())
+
+    return garbage_frames
+
 
 def get_rocket_animation():
     with open('animations/rocket_frame_1.txt') as file:
