@@ -1,4 +1,4 @@
-# Through_The_Garbage_To_The_Stars
+# Through The Garbage To The Stars
 
 Космический мега-шутер от третьего лица.
 
