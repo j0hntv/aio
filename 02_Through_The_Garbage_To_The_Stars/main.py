@@ -62,7 +62,11 @@ def get_rocket_animation():
     with open('animations/rocket_frame_2.txt') as file:
         rocket_frame2 = file.read()
     return rocket_frame1, rocket_frame2
-    
+
+
+async def fill_orbit_with_garbage(canvas):
+    pass
+
 
 async def animate_spaceship(canvas, frame1, frame2):
     row, column = curses.LINES//2, curses.COLS//2
@@ -121,6 +125,7 @@ def get_star_random_position(canvas):
     column = random.randrange(1, columns-1)
     return row, column
 
+
 def draw(canvas):
     canvas.nodelay(True)
     rocket_frame1, rocket_frame2 = get_rocket_animation()
@@ -129,8 +134,10 @@ def draw(canvas):
     coroutines = [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
     fire_coroutine = fire(canvas, curses.LINES//2, curses.COLS//2)
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
+    fly_garbage_coroutine = fly_garbage(canvas, 100, random.choice(get_garbage_frames()))
     coroutines.insert(0, fire_coroutine)
     coroutines.insert(1, animate_spaceship_coroutine)
+    coroutines.append(fly_garbage_coroutine)
 
     while True:
         for coroutine in coroutines.copy():
