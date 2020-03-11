@@ -8,7 +8,7 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
     column = max(column, 0)
     column = min(column, columns_number - 1)
 
-    row = 0
+    row = 1
 
     while row < rows_number:
         draw_frame(canvas, row, column, garbage_frame)
