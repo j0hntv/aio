@@ -127,17 +127,21 @@ def get_star_random_position(canvas):
 
 
 def draw(canvas):
+    global coroutines
     canvas.nodelay(True)
-    rocket_frame1, rocket_frame2 = get_rocket_animation()
     curses.curs_set(False)
     canvas.border()
-    coroutines = [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
+
+    rocket_frame1, rocket_frame2 = get_rocket_animation()
+    
     fire_coroutine = fire(canvas, curses.LINES//2, curses.COLS//2)
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
     fly_garbage_coroutine = fly_garbage(canvas, 100, random.choice(get_garbage_frames()))
-    coroutines.insert(0, fire_coroutine)
-    coroutines.insert(1, animate_spaceship_coroutine)
+
+    coroutines.append(fire_coroutine)
+    coroutines.append(animate_spaceship_coroutine)
     coroutines.append(fly_garbage_coroutine)
+    coroutines += [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
 
     while True:
         for coroutine in coroutines.copy():
@@ -150,6 +154,7 @@ def draw(canvas):
 
 
 if __name__ == '__main__':
+    coroutines = []
     curses.update_lines_cols()
     try:
         curses.wrapper(draw)
