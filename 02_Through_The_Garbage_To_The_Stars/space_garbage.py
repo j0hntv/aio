@@ -1,4 +1,4 @@
-from curses_tools import draw_frame
+from curses_tools import draw_frame, get_frame_size
 import asyncio
 
 async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
@@ -7,6 +7,9 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 
     column = max(column, 0)
     column = min(column, columns_number - 1)
+
+    frame_rows, frame_columns = get_frame_size(garbage_frame)
+    rows_number = rows_number - frame_rows - 1
 
     row = 1
 
