@@ -11,6 +11,11 @@ STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
 
 
+async def sleep(tics=1):
+    for _ in range(tics):
+            await asyncio.sleep(0)
+
+
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     row, column = start_row, start_column
 
@@ -79,8 +84,7 @@ async def fill_orbit_with_garbage(canvas):
         fly_garbage_coroutine = fly_garbage(canvas, random_column, garbage_frame)
         coroutines.append(fly_garbage_coroutine)
 
-        for _ in range(random.randrange(50)):
-            await asyncio.sleep(0)
+        await sleep(random.randrange(50))
 
 
 async def animate_spaceship(canvas, frame1, frame2):
@@ -119,20 +123,17 @@ async def blink(canvas, row, column):
     symbol = random.choice(STAR_SYMBOLS)
     while True:
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(random.randrange(20)):
-            await asyncio.sleep(0)
+        await sleep(random.randrange(20))
 
         canvas.addstr(row, column, symbol)
-        for _ in range(random.randrange(5)):
-            await asyncio.sleep(0)
+        await sleep(random.randrange(5))
 
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(random.randrange(10)):
-            await asyncio.sleep(0)
+        await sleep(random.randrange(10))
 
         canvas.addstr(row, column, symbol)
-        for _ in range(random.randrange(5)):
-            await asyncio.sleep(0)
+        await sleep(random.randrange(5))
+
 
 def get_star_random_position(canvas):
     rows, columns = canvas.getmaxyx()
