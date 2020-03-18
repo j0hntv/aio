@@ -65,7 +65,22 @@ def get_rocket_animation():
 
 
 async def fill_orbit_with_garbage(canvas):
-    pass
+    global coroutines
+    garbage_frames = get_garbage_frames()
+    while True:
+        garbage_frame = random.choice(garbage_frames)
+
+        _, columns = canvas.getmaxyx()
+        garbage_columns_frame_size = get_frame_size(garbage_frame)[1]
+        
+        columns_range = garbage_columns_frame_size, columns - garbage_columns_frame_size
+        random_column = random.randint(*columns_range)
+
+        fly_garbage_coroutine = fly_garbage(canvas, random_column, garbage_frame)
+        coroutines.append(fly_garbage_coroutine)
+
+        for _ in range(random.randrange(50)):
+            await asyncio.sleep(0)
 
 
 async def animate_spaceship(canvas, frame1, frame2):
@@ -134,13 +149,13 @@ def draw(canvas):
 
     rocket_frame1, rocket_frame2 = get_rocket_animation()
     
-    fire_coroutine = fire(canvas, curses.LINES//2, curses.COLS//2)
+    fire_coroutine = fire(canvas, curses.LINES//2, curses.COLS//2 + 2)
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
-    fly_garbage_coroutine = fly_garbage(canvas, 100, random.choice(get_garbage_frames()))
+    garbage_coroutine = fill_orbit_with_garbage(canvas)
 
     coroutines.append(fire_coroutine)
     coroutines.append(animate_spaceship_coroutine)
-    coroutines.append(fly_garbage_coroutine)
+    coroutines.append(garbage_coroutine)
     coroutines += [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
 
     while True:
