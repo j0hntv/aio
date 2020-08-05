@@ -10,12 +10,11 @@ from space_garbage import fly_garbage
 
 STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
-ANIMATIONS_PATH = 'animations/'
 
 
 async def sleep(tics=1):
     for _ in range(tics):
-            await asyncio.sleep(0)
+        await asyncio.sleep(0)
 
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
@@ -47,7 +46,7 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
 
 
 def get_garbage_frames():
-    garbage_files = glob.glob(f'{ANIMATIONS_PATH}*.txt')
+    garbage_files = glob.glob(f'frames/garbage/*.txt')
     garbage_frames = []
     for garbage_file in garbage_files:
         with open(garbage_file) as file:
@@ -56,10 +55,10 @@ def get_garbage_frames():
     return garbage_frames
 
 
-def get_rocket_animation():
-    with open('animations/rocket_frame_1.txt') as file:
+def get_rocket_frames():
+    with open('frames/rocket_frame_1.txt') as file:
         rocket_frame1 = file.read()
-    with open('animations/rocket_frame_2.txt') as file:
+    with open('frames/rocket_frame_2.txt') as file:
         rocket_frame2 = file.read()
     return rocket_frame1, rocket_frame2
 
@@ -143,7 +142,7 @@ def draw(canvas):
     curses.curs_set(False)
     canvas.border()
 
-    rocket_frame1, rocket_frame2 = get_rocket_animation()
+    rocket_frame1, rocket_frame2 = get_rocket_frames()
     
     fire_coroutine = fire(canvas, curses.LINES//2, curses.COLS//2 + 2)
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
