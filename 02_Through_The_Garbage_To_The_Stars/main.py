@@ -83,11 +83,12 @@ async def fill_orbit_with_garbage(canvas):
 
 
 async def animate_spaceship(canvas, frame1, frame2):
+    global coroutines
     row, column = curses.LINES//2, curses.COLS//2
     row_speed = column_speed = 0
 
     while True:
-        rows_direction, columns_direction, _ = read_controls(canvas)
+        rows_direction, columns_direction, space_pressed = read_controls(canvas)
         row_speed, column_speed = update_speed(row_speed, column_speed, rows_direction, columns_direction)
 
         row += row_speed
@@ -107,6 +108,10 @@ async def animate_spaceship(canvas, frame1, frame2):
 
         if column >= columns - frame_columns:
             column = columns - frame_columns - 1
+
+        if space_pressed:
+            fire_coroutine = fire(canvas, row, column + 2)
+            coroutines.append(fire_coroutine)
 
         draw_frame(canvas, row, column, frame1)
         await sleep(2)
@@ -149,11 +154,9 @@ def draw(canvas):
 
     rocket_frame1, rocket_frame2 = get_rocket_frames()
     
-    fire_coroutine = fire(canvas, curses.LINES//2, curses.COLS//2 + 2)
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
     garbage_coroutine = fill_orbit_with_garbage(canvas)
 
-    coroutines.append(fire_coroutine)
     coroutines.append(animate_spaceship_coroutine)
     coroutines.append(garbage_coroutine)
     coroutines += [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
