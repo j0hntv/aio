@@ -1,5 +1,6 @@
 import asyncio
 import curses
+import glob
 import random
 import sys
 import time
@@ -9,6 +10,7 @@ from space_garbage import fly_garbage
 
 STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
+ANIMATIONS_PATH = 'animations/'
 
 
 async def sleep(tics=1):
@@ -45,14 +47,7 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
 
 
 def get_garbage_frames():
-    garbage_files = (
-        'animations/duck.txt',
-        'animations/hubble.txt',
-        'animations/lamp.txt',
-        'animations/trash_large.txt',
-        'animations/trash_small.txt',
-        'animations/trash_xl.txt'
-        )
+    garbage_files = glob.glob(f'{ANIMATIONS_PATH}*.txt')
     garbage_frames = []
     for garbage_file in garbage_files:
         with open(garbage_file) as file:
