@@ -6,6 +6,7 @@ import sys
 import time
 from curses_tools import draw_frame, read_controls, get_frame_size
 from space_garbage import fly_garbage
+from physics import update_speed
 
 
 STAR_SYMBOLS = '+*.'
@@ -21,10 +22,10 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     row, column = start_row, start_column
 
     canvas.addstr(round(row), round(column), '*')
-    await asyncio.sleep(0)
+    await sleep()
 
     canvas.addstr(round(row), round(column), 'O')
-    await asyncio.sleep(0)
+    await sleep()
     canvas.addstr(round(row), round(column), ' ')
 
     row += rows_speed
@@ -39,7 +40,7 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
 
     while 1 < row < max_row and 0 < column < max_column:
         canvas.addstr(round(row), round(column), symbol)
-        await asyncio.sleep(0)
+        await sleep()
         canvas.addstr(round(row), round(column), ' ')
         row += rows_speed
         column += columns_speed
@@ -83,10 +84,14 @@ async def fill_orbit_with_garbage(canvas):
 
 async def animate_spaceship(canvas, frame1, frame2):
     row, column = curses.LINES//2, curses.COLS//2
+    row_speed = column_speed = 0
+
     while True:
         rows_direction, columns_direction, _ = read_controls(canvas)
-        row += rows_direction
-        column += columns_direction
+        row_speed, column_speed = update_speed(row_speed, column_speed, rows_direction, columns_direction)
+
+        row += row_speed
+        column += column_speed
 
         rows, columns = canvas.getmaxyx()
         frame_rows, frame_columns = get_frame_size(frame1)
@@ -104,11 +109,11 @@ async def animate_spaceship(canvas, frame1, frame2):
             column = columns - frame_columns - 1
 
         draw_frame(canvas, row, column, frame1)
-        await asyncio.sleep(0)
+        await sleep(2)
 
         draw_frame(canvas, row, column, frame1, negative=True)
         draw_frame(canvas, row, column, frame2)
-        await asyncio.sleep(0)
+        await sleep(2)
 
         draw_frame(canvas, row, column, frame2, negative=True)
 
