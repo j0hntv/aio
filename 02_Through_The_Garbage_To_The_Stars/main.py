@@ -5,7 +5,7 @@ import random
 import sys
 import time
 from curses_tools import draw_frame, read_controls, get_frame_size
-from space_garbage import fly_garbage
+from obstacles import Obstacle, show_obstacles
 from physics import update_speed
 
 
@@ -62,6 +62,32 @@ def get_rocket_frames():
     with open('frames/rocket_frame_2.txt') as file:
         rocket_frame2 = file.read()
     return rocket_frame1, rocket_frame2
+
+
+async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
+    global obstacles
+
+    rows_number, columns_number = canvas.getmaxyx()
+
+    column = max(column, 0)
+    column = min(column, columns_number - 1)
+
+    row = 1
+
+    rows_size, columns_size = get_frame_size(garbage_frame)
+    obstacle = Obstacle(row, column, rows_size, columns_size)
+    obstacles.append(obstacle)
+
+
+    while row < rows_number:
+        draw_frame(canvas, row, column, garbage_frame)
+        canvas.border()
+        await asyncio.sleep(0)
+        draw_frame(canvas, row, column, garbage_frame, negative=True)
+        row += speed
+        obstacle.row += speed
+
+    obstacles.remove(obstacle)
 
 
 async def fill_orbit_with_garbage(canvas):
@@ -156,9 +182,11 @@ def draw(canvas):
     
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
     garbage_coroutine = fill_orbit_with_garbage(canvas)
+    obstacles_coroutine = show_obstacles(canvas, obstacles)
 
     coroutines.append(animate_spaceship_coroutine)
     coroutines.append(garbage_coroutine)
+    coroutines.append(obstacles_coroutine)
     coroutines += [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
 
     while True:
@@ -173,6 +201,7 @@ def draw(canvas):
 
 if __name__ == '__main__':
     coroutines = []
+    obstacles = []
     curses.update_lines_cols()
     try:
         curses.wrapper(draw)
