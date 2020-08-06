@@ -67,7 +67,15 @@ def get_rocket_frames():
         rocket_frame1 = file.read()
     with open('frames/rocket_frame_2.txt') as file:
         rocket_frame2 = file.read()
+
     return rocket_frame1, rocket_frame2
+
+
+def get_game_over_frame():
+    with open('frames/game_over.txt') as file:
+        game_over_frame = file.read()
+    
+    return game_over_frame
 
 
 async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
@@ -107,7 +115,6 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 
 async def fill_orbit_with_garbage(canvas):
     global coroutines
-    garbage_frames = get_garbage_frames()
     while True:
         garbage_frame = random.choice(garbage_frames)
 
@@ -123,12 +130,30 @@ async def fill_orbit_with_garbage(canvas):
         await sleep(random.randrange(50))
 
 
+async def show_gameover(canvas):
+    row, column = curses.LINES//2, curses.COLS//2
+    frame_size = get_frame_size(game_over_frame)
+    row -= frame_size[0] // 2
+    column -= frame_size[1] // 2
+
+    while True:
+        draw_frame(canvas, row, column, game_over_frame)
+        await sleep(10)
+        draw_frame(canvas, row, column, game_over_frame, negative=True)
+        await sleep(4)
+
+
 async def animate_spaceship(canvas, frame1, frame2):
     global coroutines
     row, column = curses.LINES//2, curses.COLS//2
     row_speed = column_speed = 0
 
     while True:
+        for obstacle in obstacles:
+            if obstacle.has_collision(row, column):
+                await show_gameover(canvas)
+                return
+
         rows_direction, columns_direction, space_pressed = read_controls(canvas)
         row_speed, column_speed = update_speed(row_speed, column_speed, rows_direction, columns_direction)
 
@@ -155,11 +180,11 @@ async def animate_spaceship(canvas, frame1, frame2):
             coroutines.append(fire_coroutine)
 
         draw_frame(canvas, row, column, frame1)
-        await sleep(2)
+        await sleep()
 
         draw_frame(canvas, row, column, frame1, negative=True)
         draw_frame(canvas, row, column, frame2)
-        await sleep(2)
+        await sleep()
 
         draw_frame(canvas, row, column, frame2, negative=True)
 
@@ -192,8 +217,6 @@ def draw(canvas):
     canvas.nodelay(True)
     curses.curs_set(False)
     canvas.border()
-
-    rocket_frame1, rocket_frame2 = get_rocket_frames()
     
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
     garbage_coroutine = fill_orbit_with_garbage(canvas)
@@ -213,6 +236,10 @@ def draw(canvas):
 
 
 if __name__ == '__main__':
+    game_over_frame = get_game_over_frame()
+    garbage_frames = get_garbage_frames()
+    rocket_frame1, rocket_frame2 = get_rocket_frames()
+
     coroutines = []
     obstacles = []
     obstacles_in_last_collisions = []
