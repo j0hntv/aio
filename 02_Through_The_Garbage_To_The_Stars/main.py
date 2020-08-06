@@ -19,6 +19,7 @@ async def sleep(tics=1):
 
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
+    global obstacles_in_last_collisions
     row, column = start_row, start_column
 
     canvas.addstr(round(row), round(column), '*')
@@ -41,6 +42,7 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     while 1 < row < max_row and 0 < column < max_column:
         for obstacle in obstacles:
             if obstacle.has_collision(row, column):
+                obstacles_in_last_collisions.append(obstacle)
                 return
         canvas.addstr(round(row), round(column), symbol)
         await sleep()
@@ -81,16 +83,19 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
     obstacle = Obstacle(row, column, rows_size, columns_size)
     obstacles.append(obstacle)
 
-
-    while row < rows_number:
-        draw_frame(canvas, row, column, garbage_frame)
-        canvas.border()
-        await asyncio.sleep(0)
-        draw_frame(canvas, row, column, garbage_frame, negative=True)
-        row += speed
-        obstacle.row += speed
-
-    obstacles.remove(obstacle)
+    try:
+        while row < rows_number:
+            if obstacle in obstacles_in_last_collisions:
+                obstacles_in_last_collisions.remove(obstacle)
+                return
+            draw_frame(canvas, row, column, garbage_frame)
+            canvas.border()
+            await asyncio.sleep(0)
+            draw_frame(canvas, row, column, garbage_frame, negative=True)
+            row += speed
+            obstacle.row += speed
+    finally:
+        obstacles.remove(obstacle)
 
 
 async def fill_orbit_with_garbage(canvas):
@@ -203,6 +208,7 @@ def draw(canvas):
 if __name__ == '__main__':
     coroutines = []
     obstacles = []
+    obstacles_in_last_collisions = []
     curses.update_lines_cols()
     try:
         curses.wrapper(draw)
