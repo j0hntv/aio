@@ -5,7 +5,7 @@ import random
 import sys
 import time
 from curses_tools import draw_frame, read_controls, get_frame_size
-from obstacles import Obstacle, show_obstacles
+from obstacles import Obstacle
 from physics import update_speed
 
 
@@ -39,6 +39,9 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     curses.beep()
 
     while 1 < row < max_row and 0 < column < max_column:
+        for obstacle in obstacles:
+            if obstacle.has_collision(row, column):
+                return
         canvas.addstr(round(row), round(column), symbol)
         await sleep()
         canvas.addstr(round(row), round(column), ' ')
@@ -182,11 +185,9 @@ def draw(canvas):
     
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
     garbage_coroutine = fill_orbit_with_garbage(canvas)
-    obstacles_coroutine = show_obstacles(canvas, obstacles)
 
     coroutines.append(animate_spaceship_coroutine)
     coroutines.append(garbage_coroutine)
-    coroutines.append(obstacles_coroutine)
     coroutines += [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
 
     while True:
