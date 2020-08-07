@@ -24,6 +24,10 @@ async def sleep(tics=1):
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     global obstacles_in_last_collisions
+
+    if year < year_of_emergence_gun:
+        return
+
     row, column = start_row, start_column
 
     canvas.addstr(round(row), round(column), '*')
@@ -266,6 +270,7 @@ if __name__ == '__main__':
     rocket_frame1, rocket_frame2 = get_rocket_frames()
 
     year = START_YEAR
+    year_of_emergence_gun = 2000
 
     coroutines = []
     obstacles = []
