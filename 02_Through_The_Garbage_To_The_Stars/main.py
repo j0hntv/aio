@@ -15,6 +15,7 @@ from physics import update_speed
 STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
 START_YEAR = 1957
+YEAR_OF_EMERGENCE_GUN = 2000
 
 
 async def sleep(tics=1):
@@ -25,7 +26,7 @@ async def sleep(tics=1):
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     global obstacles_in_last_collisions
 
-    if year < year_of_emergence_gun:
+    if year < YEAR_OF_EMERGENCE_GUN:
         return
 
     row, column = start_row, start_column
@@ -103,6 +104,7 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
         while row < rows_number:
             if obstacle in obstacles_in_last_collisions:
                 obstacles_in_last_collisions.remove(obstacle)
+                curses.beep()
 
                 obstacle_center_row = obstacle.row + rows_size // 2
                 obstacle_center_column = obstacle.column + columns_size // 2
@@ -270,7 +272,6 @@ if __name__ == '__main__':
     rocket_frame1, rocket_frame2 = get_rocket_frames()
 
     year = START_YEAR
-    year_of_emergence_gun = 2000
 
     coroutines = []
     obstacles = []
