@@ -4,14 +4,17 @@ import glob
 import random
 import sys
 import time
+
 from curses_tools import draw_frame, read_controls, get_frame_size
 from explosion import explode
+from game_scenario import get_garbage_delay_tics, PHRASES
 from obstacles import Obstacle
 from physics import update_speed
 
 
 STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
+START_YEAR = 1957
 
 
 async def sleep(tics=1):
@@ -116,18 +119,21 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 async def fill_orbit_with_garbage(canvas):
     global coroutines
     while True:
-        garbage_frame = random.choice(garbage_frames)
+        garbage_delay_tics = get_garbage_delay_tics(year)
+        if garbage_delay_tics:
+            await sleep(garbage_delay_tics)
 
-        _, columns = canvas.getmaxyx()
-        garbage_columns_frame_size = get_frame_size(garbage_frame)[1]
-        
-        columns_range = garbage_columns_frame_size, columns - garbage_columns_frame_size
-        random_column = random.randint(*columns_range)
+            garbage_frame = random.choice(garbage_frames)
+            _, columns = canvas.getmaxyx()
+            garbage_columns_frame_size = get_frame_size(garbage_frame)[1]
+            
+            columns_range = garbage_columns_frame_size, columns - garbage_columns_frame_size
+            random_column = random.randint(*columns_range)
 
-        fly_garbage_coroutine = fly_garbage(canvas, random_column, garbage_frame)
-        coroutines.append(fly_garbage_coroutine)
+            fly_garbage_coroutine = fly_garbage(canvas, random_column, garbage_frame)
+            coroutines.append(fly_garbage_coroutine)
 
-        await sleep(random.randrange(50))
+        await sleep()
 
 
 async def show_gameover(canvas):
@@ -141,6 +147,23 @@ async def show_gameover(canvas):
         await sleep(10)
         draw_frame(canvas, row, column, game_over_frame, negative=True)
         await sleep(4)
+
+
+def get_current_event(year):
+    return PHRASES.get(year, '')
+
+
+async def show_current_year(canvas):
+    global year
+    event_window = canvas.derwin(1, 50, 1, 2)
+
+    while True:
+        current_event = get_current_event(year)
+        event = f'Year: {year} {current_event}'
+        event_window.addstr(0, 0, event)
+        await sleep(15)
+        event_window.addstr(0, 0, len(event) * ' ')
+        year += 1
 
 
 async def animate_spaceship(canvas, frame1, frame2):
@@ -207,7 +230,7 @@ async def blink(canvas, row, column):
 
 def get_star_random_position(canvas):
     rows, columns = canvas.getmaxyx()
-    row = random.randrange(1, rows-1)
+    row = random.randrange(2, rows-1)
     column = random.randrange(1, columns-1)
     return row, column
 
@@ -220,10 +243,12 @@ def draw(canvas):
     
     animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
     garbage_coroutine = fill_orbit_with_garbage(canvas)
+    show_year_coroutine = show_current_year(canvas)
 
     coroutines.append(animate_spaceship_coroutine)
     coroutines.append(garbage_coroutine)
     coroutines += [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
+    coroutines.append(show_year_coroutine)
 
     while True:
         for coroutine in coroutines.copy():
@@ -240,9 +265,12 @@ if __name__ == '__main__':
     garbage_frames = get_garbage_frames()
     rocket_frame1, rocket_frame2 = get_rocket_frames()
 
+    year = START_YEAR
+
     coroutines = []
     obstacles = []
     obstacles_in_last_collisions = []
+
     curses.update_lines_cols()
     try:
         curses.wrapper(draw)
