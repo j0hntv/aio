@@ -2,6 +2,8 @@
 
 Космический мега-шутер от третьего лица.
 
+![](./.preview/preview.gif)
+
 ## Установка
 ```
 git clone https://github.com/j0hntv/aio.git
