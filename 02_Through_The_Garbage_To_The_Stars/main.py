@@ -165,10 +165,10 @@ async def show_current_year(canvas):
 
     while True:
         current_event = get_current_event(year)
-        event = f'Year: {year} {current_event}'
-        event_window.addstr(0, 0, event)
+        event_text = f'Year: {year} {current_event}'
+        draw_frame(event_window, 0, 0, event_text)
         await sleep(15)
-        event_window.addstr(0, 0, len(event) * ' ')
+        draw_frame(event_window, 0, 0, event_text, negative=True)
         year += 1
 
 
@@ -251,10 +251,11 @@ def draw(canvas):
     garbage_coroutine = fill_orbit_with_garbage(canvas)
     show_year_coroutine = show_current_year(canvas)
 
+    coroutines.append(show_year_coroutine)
     coroutines.append(animate_spaceship_coroutine)
     coroutines.append(garbage_coroutine)
     coroutines += [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
-    coroutines.append(show_year_coroutine)
+
 
     while True:
         for coroutine in coroutines.copy():
