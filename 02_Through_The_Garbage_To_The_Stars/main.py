@@ -114,7 +114,7 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 
             draw_frame(canvas, row, column, garbage_frame)
             canvas.border()
-            await asyncio.sleep(0)
+            await sleep()
             draw_frame(canvas, row, column, garbage_frame, negative=True)
             row += speed
             obstacle.row += speed
@@ -126,20 +126,23 @@ async def fill_orbit_with_garbage(canvas):
     global coroutines
     while True:
         garbage_delay_tics = get_garbage_delay_tics(year)
-        if garbage_delay_tics:
-            await sleep(garbage_delay_tics)
+        
+        if not garbage_delay_tics:
+            await sleep()
+            continue
 
-            garbage_frame = random.choice(garbage_frames)
-            _, columns = canvas.getmaxyx()
-            garbage_columns_frame_size = get_frame_size(garbage_frame)[1]
-            
-            columns_range = garbage_columns_frame_size, columns - garbage_columns_frame_size
-            random_column = random.randint(*columns_range)
+        garbage_frame = random.choice(garbage_frames)
+        _, columns = canvas.getmaxyx()
+        garbage_columns_frame_size = get_frame_size(garbage_frame)[1]
+        
+        columns_range = garbage_columns_frame_size, columns - garbage_columns_frame_size
+        random_column = random.randint(*columns_range)
 
-            fly_garbage_coroutine = fly_garbage(canvas, random_column, garbage_frame)
-            coroutines.append(fly_garbage_coroutine)
+        fly_garbage_coroutine = fly_garbage(canvas, random_column, garbage_frame)
+        coroutines.append(fly_garbage_coroutine)
+        await sleep(garbage_delay_tics)
 
-        await sleep()
+        
 
 
 async def show_gameover(canvas):
