@@ -15,7 +15,7 @@ from physics import update_speed
 STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
 START_YEAR = 1957
-YEAR_OF_EMERGENCE_GUN = 2000
+YEAR_OF_WEAPON_APPEARED = 2000
 
 
 async def sleep(tics=1):
@@ -26,7 +26,7 @@ async def sleep(tics=1):
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     global obstacles_in_last_collisions
 
-    if year < YEAR_OF_EMERGENCE_GUN:
+    if year < YEAR_OF_WEAPON_APPEARED:
         return
 
     row, column = start_row, start_column
@@ -142,8 +142,6 @@ async def fill_orbit_with_garbage(canvas):
         coroutines.append(fly_garbage_coroutine)
         await sleep(garbage_delay_tics)
 
-        
-
 
 async def show_gameover(canvas):
     row, column = curses.LINES//2, curses.COLS//2
@@ -170,6 +168,7 @@ async def show_current_year(canvas):
         current_event = get_current_event(year)
         event_text = f'Year: {year} {current_event}'
         draw_frame(event_window, 0, 0, event_text)
+        event_window.refresh()
         await sleep(15)
         draw_frame(event_window, 0, 0, event_text, negative=True)
         year += 1
