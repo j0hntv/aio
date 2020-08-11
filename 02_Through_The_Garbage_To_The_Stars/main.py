@@ -14,8 +14,11 @@ from physics import update_speed
 
 STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
-START_YEAR = 1957
 YEAR_OF_WEAPON_APPEARED = 2000
+year = 1957
+coroutines = []
+obstacles = []
+obstacles_in_last_collisions = []
 
 
 async def sleep(tics=1):
@@ -122,7 +125,7 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
         obstacles.remove(obstacle)
 
 
-async def fill_orbit_with_garbage(canvas):
+async def fill_orbit_with_garbage(canvas, garbage_frames):
     global coroutines
     while True:
         garbage_delay_tics = get_garbage_delay_tics(year)
@@ -143,16 +146,16 @@ async def fill_orbit_with_garbage(canvas):
         await sleep(garbage_delay_tics)
 
 
-async def show_gameover(canvas):
+async def show_gameover(canvas, frame):
     row, column = curses.LINES//2, curses.COLS//2
-    frame_size = get_frame_size(game_over_frame)
+    frame_size = get_frame_size(frame)
     row -= frame_size[0] // 2
     column -= frame_size[1] // 2
 
     while True:
-        draw_frame(canvas, row, column, game_over_frame)
+        draw_frame(canvas, row, column, frame)
         await sleep(10)
-        draw_frame(canvas, row, column, game_over_frame, negative=True)
+        draw_frame(canvas, row, column, frame, negative=True)
         await sleep(4)
 
 
@@ -174,7 +177,7 @@ async def show_current_year(canvas):
         year += 1
 
 
-async def animate_spaceship(canvas, frame1, frame2):
+async def animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_frame):
     global coroutines
     row, column = curses.LINES//2, curses.COLS//2
     row_speed = column_speed = 0
@@ -182,7 +185,7 @@ async def animate_spaceship(canvas, frame1, frame2):
     while True:
         for obstacle in obstacles:
             if obstacle.has_collision(row, column):
-                await show_gameover(canvas)
+                await show_gameover(canvas, game_over_frame)
                 return
 
         rows_direction, columns_direction, space_pressed = read_controls(canvas)
@@ -192,7 +195,7 @@ async def animate_spaceship(canvas, frame1, frame2):
         column += column_speed
 
         rows, columns = canvas.getmaxyx()
-        frame_rows, frame_columns = get_frame_size(frame1)
+        frame_rows, frame_columns = get_frame_size(rocket_frame1)
 
         if row <= 1:
             row = 1
@@ -210,14 +213,14 @@ async def animate_spaceship(canvas, frame1, frame2):
             fire_coroutine = fire(canvas, row, column + 2)
             coroutines.append(fire_coroutine)
 
-        draw_frame(canvas, row, column, frame1)
+        draw_frame(canvas, row, column, rocket_frame1)
         await sleep()
 
-        draw_frame(canvas, row, column, frame1, negative=True)
-        draw_frame(canvas, row, column, frame2)
+        draw_frame(canvas, row, column, rocket_frame1, negative=True)
+        draw_frame(canvas, row, column, rocket_frame2)
         await sleep()
 
-        draw_frame(canvas, row, column, frame2, negative=True)
+        draw_frame(canvas, row, column, rocket_frame2, negative=True)
 
 
 async def blink(canvas, row, column):
@@ -248,9 +251,13 @@ def draw(canvas):
     canvas.nodelay(True)
     curses.curs_set(False)
     canvas.border()
-    
-    animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2)
-    garbage_coroutine = fill_orbit_with_garbage(canvas)
+
+    rocket_frame1, rocket_frame2 = get_rocket_frames()
+    game_over_frame = get_game_over_frame()
+    garbage_frames = get_garbage_frames()
+
+    animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_frame)
+    garbage_coroutine = fill_orbit_with_garbage(canvas, garbage_frames)
     show_year_coroutine = show_current_year(canvas)
 
     coroutines.append(show_year_coroutine)
@@ -269,19 +276,13 @@ def draw(canvas):
         time.sleep(TIC_TIMEOUT)
 
 
-if __name__ == '__main__':
-    game_over_frame = get_game_over_frame()
-    garbage_frames = get_garbage_frames()
-    rocket_frame1, rocket_frame2 = get_rocket_frames()
-
-    year = START_YEAR
-
-    coroutines = []
-    obstacles = []
-    obstacles_in_last_collisions = []
-
+def main():
     curses.update_lines_cols()
     try:
         curses.wrapper(draw)
     except KeyboardInterrupt:
         sys.exit()
+
+
+if __name__ == '__main__':
+    main()
