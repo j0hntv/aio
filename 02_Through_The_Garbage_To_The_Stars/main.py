@@ -1,6 +1,7 @@
 import asyncio
 import curses
 import glob
+import itertools
 import random
 import sys
 import time
@@ -15,6 +16,7 @@ from physics import update_speed
 STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
 YEAR_OF_WEAPON_APPEARED = 2000
+FIRE_OFFSET_FOR_SPACESHIP_DIMENSIONS = 2
 year = 1957
 coroutines = []
 obstacles = []
@@ -182,7 +184,7 @@ async def animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_fram
     row, column = curses.LINES//2, curses.COLS//2
     row_speed = column_speed = 0
 
-    while True:
+    for frame in itertools.cycle([rocket_frame1, rocket_frame2]):
         for obstacle in obstacles:
             if obstacle.has_collision(row, column):
                 await show_gameover(canvas, game_over_frame)
@@ -195,13 +197,10 @@ async def animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_fram
         column += column_speed
 
         rows, columns = canvas.getmaxyx()
-        frame_rows, frame_columns = get_frame_size(rocket_frame1)
+        frame_rows, frame_columns = get_frame_size(frame)
 
-        if row <= 1:
-            row = 1
-
-        if column <= 1:
-            column = 1
+        row = max(row, 1)
+        column = max(column, 1)
 
         if row  >= rows - frame_rows:
             row = rows - frame_rows - 1
@@ -210,17 +209,13 @@ async def animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_fram
             column = columns - frame_columns - 1
 
         if space_pressed:
-            fire_coroutine = fire(canvas, row, column + 2)
+            fire_coroutine = fire(canvas, row, column + FIRE_OFFSET_FOR_SPACESHIP_DIMENSIONS)
             coroutines.append(fire_coroutine)
 
-        draw_frame(canvas, row, column, rocket_frame1)
+        draw_frame(canvas, row, column, frame)
         await sleep()
 
-        draw_frame(canvas, row, column, rocket_frame1, negative=True)
-        draw_frame(canvas, row, column, rocket_frame2)
-        await sleep()
-
-        draw_frame(canvas, row, column, rocket_frame2, negative=True)
+        draw_frame(canvas, row, column, frame, negative=True)
 
 
 async def blink(canvas, row, column):
@@ -240,9 +235,11 @@ async def blink(canvas, row, column):
 
 
 def get_star_random_position(canvas):
+    offset = 1 # for border
+    up_offset = 2 # for event window
     rows, columns = canvas.getmaxyx()
-    row = random.randrange(2, rows-1)
-    column = random.randrange(1, columns-1)
+    row = random.randrange(up_offset, rows - offset)
+    column = random.randrange(offset, columns - offset)
     return row, column
 
 
@@ -256,14 +253,12 @@ def draw(canvas):
     game_over_frame = get_game_over_frame()
     garbage_frames = get_garbage_frames()
 
-    animate_spaceship_coroutine = animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_frame)
-    garbage_coroutine = fill_orbit_with_garbage(canvas, garbage_frames)
-    show_year_coroutine = show_current_year(canvas)
-
-    coroutines.append(show_year_coroutine)
-    coroutines.append(animate_spaceship_coroutine)
-    coroutines.append(garbage_coroutine)
-    coroutines += [blink(canvas, *get_star_random_position(canvas)) for i in range(100)]
+    coroutines.extend([
+        animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_frame),
+        fill_orbit_with_garbage(canvas, garbage_frames),
+        show_current_year(canvas),
+        *(blink(canvas, *get_star_random_position(canvas)) for i in range(100))
+    ])
 
 
     while True:
