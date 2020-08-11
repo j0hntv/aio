@@ -200,13 +200,10 @@ async def animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_fram
         frame_rows, frame_columns = get_frame_size(frame)
 
         row = max(row, 1)
+        row = min(row, rows - frame_rows - 1)
         column = max(column, 1)
+        column = min(column, columns - frame_columns - 1)
 
-        if row  >= rows - frame_rows:
-            row = rows - frame_rows - 1
-
-        if column >= columns - frame_columns:
-            column = columns - frame_columns - 1
 
         if space_pressed:
             fire_coroutine = fire(canvas, row, column + FIRE_OFFSET_FOR_SPACESHIP_DIMENSIONS)
