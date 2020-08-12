@@ -17,6 +17,7 @@ STAR_SYMBOLS = '+*.'
 TIC_TIMEOUT = 0.1
 YEAR_OF_WEAPON_APPEARED = 2000
 FIRE_OFFSET_FOR_SPACESHIP_DIMENSIONS = 2
+SPACESHIP_BORDER_OFFSET = 1
 year = 1957
 coroutines = []
 obstacles = []
@@ -182,11 +183,13 @@ async def show_current_year(canvas):
 async def animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_frame):
     global coroutines
     row, column = curses.LINES//2, curses.COLS//2
+    rows, columns = canvas.getmaxyx()
     row_speed = column_speed = 0
 
     for frame in itertools.cycle([rocket_frame1, rocket_frame2]):
+        frame_rows, frame_columns = get_frame_size(frame)
         for obstacle in obstacles:
-            if obstacle.has_collision(row, column):
+            if obstacle.has_collision(row, column, frame_rows, frame_columns):
                 await show_gameover(canvas, game_over_frame)
                 return
 
@@ -196,14 +199,10 @@ async def animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_fram
         row += row_speed
         column += column_speed
 
-        rows, columns = canvas.getmaxyx()
-        frame_rows, frame_columns = get_frame_size(frame)
-
-        row = max(row, 1)
-        row = min(row, rows - frame_rows - 1)
-        column = max(column, 1)
-        column = min(column, columns - frame_columns - 1)
-
+        row = max(row, SPACESHIP_BORDER_OFFSET)
+        row = min(row, rows - frame_rows - SPACESHIP_BORDER_OFFSET)
+        column = max(column, SPACESHIP_BORDER_OFFSET)
+        column = min(column, columns - frame_columns - SPACESHIP_BORDER_OFFSET)
 
         if space_pressed:
             fire_coroutine = fire(canvas, row, column + FIRE_OFFSET_FOR_SPACESHIP_DIMENSIONS)
