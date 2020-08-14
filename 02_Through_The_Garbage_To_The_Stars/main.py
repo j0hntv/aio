@@ -162,16 +162,12 @@ async def show_gameover(canvas, frame):
         await sleep(4)
 
 
-def get_current_event(year):
-    return PHRASES.get(year, '')
-
-
-async def show_current_year(canvas):
+async def animate_year(canvas):
     global year
     event_window = canvas.derwin(1, 50, 1, 2)
 
     while True:
-        current_event = get_current_event(year)
+        current_event = PHRASES.get(year, '')
         event_text = f'Year: {year} {current_event}'
         draw_frame(event_window, 0, 0, event_text)
         event_window.refresh()
@@ -186,7 +182,9 @@ async def animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_fram
     rows, columns = canvas.getmaxyx()
     row_speed = column_speed = 0
 
-    for frame in itertools.cycle([rocket_frame1, rocket_frame2]):
+    animation_scheme = [rocket_frame1] * 2 + [rocket_frame2] * 2
+
+    for frame in itertools.cycle(animation_scheme):
         frame_rows, frame_columns = get_frame_size(frame)
         for obstacle in obstacles:
             if obstacle.has_collision(row, column, frame_rows, frame_columns):
@@ -252,7 +250,7 @@ def draw(canvas):
     coroutines.extend([
         animate_spaceship(canvas, rocket_frame1, rocket_frame2, game_over_frame),
         fill_orbit_with_garbage(canvas, garbage_frames),
-        show_current_year(canvas),
+        animate_year(canvas),
         *(blink(canvas, *get_star_random_position(canvas)) for i in range(100))
     ])
 
