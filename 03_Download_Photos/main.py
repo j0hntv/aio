@@ -1,27 +1,31 @@
-from subprocess import Popen, PIPE, check_output
+import asyncio
 
 
 COMMAND = 'zip -r - test/'
 
 
-def archive1():
-    process = Popen(COMMAND.split(), stdout=PIPE)
-    stdout, _ = process.communicate()
+async def archivate(chunk_size=100):
+    process = await asyncio.create_subprocess_shell(
+        COMMAND,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
 
-    with open('archive1.zip', 'w+b') as file:
-        file.write(stdout)
+    archive = bytes()
 
+    while True:
+        stdout_chunk = await process.stdout.read(chunk_size*1000)
+        if not stdout_chunk:
+            break
 
-def archive2():
-    archive = check_output(COMMAND.split())
+        archive += stdout_chunk
 
-    with open('archive2.zip', 'w+b') as file:
+    with open('archive.zip', 'w+b') as file:
         file.write(archive)
 
 
 def main():
-    archive1()
-    archive2()
+    asyncio.run(archivate())
 
 
 if __name__ == "__main__":
