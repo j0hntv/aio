@@ -5,31 +5,28 @@ from aiohttp import web
 
 
 INTERVAL_SECS = 1
+COMMAND = 'zip -r - test_photos/'
 
 
-async def uptime_handler(request):
-    
+async def archivate(request, chunk_size=100):
+    process = await asyncio.create_subprocess_shell(
+        COMMAND,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+
     response = web.StreamResponse()
-
-    # Большинство браузеров не отрисовывают частично загруженный контент, только если это не HTML.
-    # Поэтому отправляем клиенту именно HTML, указываем это в Content-Type.
     response.headers['Content-Type'] = 'text/html'
-
-    # Отправляет клиенту HTTP заголовки
+    response.headers['Content-Disposition'] = 'attachment; filename="archive.zip"'
     await response.prepare(request)
 
     while True:
-        formatted_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        message = f'{formatted_date}<br>'  # <br> — HTML тег переноса строки
+        stdout_chunk = await process.stdout.read(chunk_size*1000)
+        if not stdout_chunk:
+            return response
 
-        # Отправляет клиенту очередную порцию ответа
-        await response.write(message.encode('utf-8'))
-
+        await response.write(stdout_chunk)
         await asyncio.sleep(INTERVAL_SECS)
-
-
-async def archivate(request):
-    raise NotImplementedError
 
 
 async def handle_index_page(request):
@@ -43,6 +40,6 @@ if __name__ == '__main__':
     archive_hash = '7kna'
     app.add_routes([
         web.get('/', handle_index_page),
-        web.get(f'/archive/{archive_hash}/', uptime_handler),
+        web.get(f'/archive/{archive_hash}/', archivate),
     ])
     web.run_app(app)
