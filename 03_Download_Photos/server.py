@@ -1,18 +1,24 @@
 import asyncio
 import datetime
+import os
+
 import aiofiles
 from aiohttp import web
 
 
 INTERVAL_SECS = 0.1
-COMMAND = 'zip -rj - test_photos/'
+COMMAND = 'zip -rj - '
 
 
 async def archivate(request, chunk_size=100):
     archive_hash = request.match_info['archive_hash']
+    path = os.path.join('test_photos/', archive_hash)
+
+    if not os.path.exists(path):
+        raise web.HTTPNotFound(text='The archive does not exist or has been deleted.')
 
     process = await asyncio.create_subprocess_shell(
-        COMMAND + archive_hash,
+        COMMAND + path,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
