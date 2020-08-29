@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 import os
 
 import aiofiles
@@ -8,6 +9,7 @@ from aiohttp import web
 
 INTERVAL_SECS = 0.1
 COMMAND = 'zip -rj - '
+logger = logging.getLogger(__name__)
 
 
 async def archivate(request, chunk_size=100):
@@ -32,6 +34,7 @@ async def archivate(request, chunk_size=100):
         if not stdout_chunk:
             return response
 
+        logger.info('Sending archive chunk...')
         await response.write(stdout_chunk)
         await asyncio.sleep(INTERVAL_SECS)
 
@@ -43,6 +46,8 @@ async def handle_index_page(request):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
