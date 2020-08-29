@@ -4,20 +4,21 @@ import aiofiles
 from aiohttp import web
 
 
-INTERVAL_SECS = 1
-COMMAND = 'zip -r - test_photos/'
+INTERVAL_SECS = 0.1
+COMMAND = 'zip -rj - test_photos/'
 
 
 async def archivate(request, chunk_size=100):
+    archive_hash = request.match_info['archive_hash']
+
     process = await asyncio.create_subprocess_shell(
-        COMMAND,
+        COMMAND + archive_hash,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
 
     response = web.StreamResponse()
-    response.headers['Content-Type'] = 'text/html'
-    response.headers['Content-Disposition'] = 'attachment; filename="archive.zip"'
+    response.headers['Content-Disposition'] = 'attachment; filename="photos.zip"'
     await response.prepare(request)
 
     while True:
@@ -37,9 +38,8 @@ async def handle_index_page(request):
 
 if __name__ == '__main__':
     app = web.Application()
-    archive_hash = '7kna'
     app.add_routes([
         web.get('/', handle_index_page),
-        web.get(f'/archive/{archive_hash}/', archivate),
+        web.get('/archive/{archive_hash}/', archivate),
     ])
     web.run_app(app)
