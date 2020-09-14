@@ -7,7 +7,7 @@ import aiofiles
 from aiohttp import web
 
 
-INTERVAL_SECS = 0.1
+INTERVAL_SECS = 4
 COMMAND = 'zip -rj - '
 logger = logging.getLogger(__name__)
 
@@ -29,14 +29,23 @@ async def archivate(request, chunk_size=100):
     response.headers['Content-Disposition'] = 'attachment; filename="photos.zip"'
     await response.prepare(request)
 
-    while True:
-        stdout_chunk = await process.stdout.read(chunk_size*1000)
-        if not stdout_chunk:
-            return response
+    try:
+        while True:
+            stdout_chunk = await process.stdout.read(chunk_size*1000)
+            if not stdout_chunk:
+                return response
 
-        logger.info('Sending archive chunk...')
-        await response.write(stdout_chunk)
-        await asyncio.sleep(INTERVAL_SECS)
+            logger.info('Sending archive chunk...')
+            await response.write(stdout_chunk)
+            await asyncio.sleep(INTERVAL_SECS)
+
+    except asyncio.CancelledError:
+        logger.info('Download was interrupted.')
+        raise
+
+    finally:
+        process.kill()
+        return response
 
 
 async def handle_index_page(request):
