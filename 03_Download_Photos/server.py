@@ -8,7 +8,6 @@ from aiohttp import web
 
 
 INTERVAL_SECS = 4
-COMMAND = 'zip -rj - '
 logger = logging.getLogger(__name__)
 
 
@@ -19,8 +18,9 @@ async def archivate(request, chunk_size=100):
     if not os.path.exists(path):
         raise web.HTTPNotFound(text='The archive does not exist or has been deleted.')
 
-    process = await asyncio.create_subprocess_shell(
-        COMMAND + path,
+    command = ['zip', '-jr', '-', path]
+    process = await asyncio.create_subprocess_exec(
+        *command,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
@@ -42,10 +42,11 @@ async def archivate(request, chunk_size=100):
 
     except asyncio.CancelledError:
         logger.info('Download was interrupted.')
-        process.kill()
         raise
 
     finally:
+        if process:
+            process.kill()
         return response
 
 
