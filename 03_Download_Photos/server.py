@@ -11,7 +11,7 @@ INTERVAL_SECS = 4
 logger = logging.getLogger(__name__)
 
 
-async def archivate(request, chunk_size=100):
+async def archivate(request, chunk_size=4096):
     archive_hash = request.match_info['archive_hash']
     path = os.path.join('test_photos/', archive_hash)
 
@@ -31,7 +31,7 @@ async def archivate(request, chunk_size=100):
 
     try:
         while True:
-            stdout_chunk = await process.stdout.read(chunk_size*1000)
+            stdout_chunk = await process.stdout.read(chunk_size)
             if not stdout_chunk:
                 logger.info('Download complete!')
                 return response
