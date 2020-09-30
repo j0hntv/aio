@@ -34,19 +34,23 @@ async def archivate(request, chunk_size=4096):
             stdout_chunk = await process.stdout.read(chunk_size)
             if not stdout_chunk:
                 logger.info('Download complete!')
-                return response
+                break
 
             logger.info('Sending archive chunk...')
             await response.write(stdout_chunk)
-            await asyncio.sleep(INTERVAL_SECS)
+
+            if INTERVAL_SECS:
+                await asyncio.sleep(INTERVAL_SECS)
 
     except asyncio.CancelledError:
         logger.info('Download was interrupted.')
         raise
 
     finally:
-        if process:
+        if process.returncode is None:
             process.kill()
+            await process.communicate()
+
         return response
 
 
