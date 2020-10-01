@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import datetime
 import logging
@@ -6,14 +7,15 @@ import os
 import aiofiles
 from aiohttp import web
 
-
-INTERVAL_SECS = 4
-logger = logging.getLogger(__name__)
+from functools import partial
 
 
-async def archivate(request, chunk_size=4096):
+logger = logging.getLogger('server')
+
+
+async def archivate(request, path, delay, chunk_size=4096):
     archive_hash = request.match_info['archive_hash']
-    path = os.path.join('test_photos/', archive_hash)
+    path = os.path.join(path, archive_hash)
 
     if not os.path.exists(path):
         raise web.HTTPNotFound(text='The archive does not exist or has been deleted.')
@@ -39,8 +41,8 @@ async def archivate(request, chunk_size=4096):
             logger.info('Sending archive chunk...')
             await response.write(stdout_chunk)
 
-            if INTERVAL_SECS:
-                await asyncio.sleep(INTERVAL_SECS)
+            if delay:
+                await asyncio.sleep(delay)
 
     except asyncio.CancelledError:
         logger.info('Download was interrupted.')
@@ -60,12 +62,22 @@ async def handle_index_page(request):
     return web.Response(text=index_contents, content_type='text/html')
 
 
+def get_arg_parser():
+    parser = argparse.ArgumentParser(description="Micro service for downloading files")
+    parser.add_argument('-l', '--logging', action='store_true')
+    parser.add_argument('-d', '--delay', type=int, default=None)
+    parser.add_argument('-p', '--path', default='test_photos')
+    return parser
+
+
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    
+    args = get_arg_parser().parse_args()
+    if args.logging:
+        logging.basicConfig(level=logging.INFO)
+
     app = web.Application()
     app.add_routes([
         web.get('/', handle_index_page),
-        web.get('/archive/{archive_hash}/', archivate),
+        web.get('/archive/{archive_hash}/', partial(archivate, path=args.path, delay=args.delay)),
     ])
     web.run_app(app)
