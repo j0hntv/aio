@@ -28,6 +28,7 @@ async def archivate(request, path, delay, chunk_size=4096):
     )
 
     response = web.StreamResponse()
+    response.enable_chunked_encoding()
     response.headers['Content-Disposition'] = 'attachment; filename="photos.zip"'
     await response.prepare(request)
 
@@ -53,6 +54,7 @@ async def archivate(request, path, delay, chunk_size=4096):
             process.kill()
             await process.communicate()
 
+        response.force_close()
         return response
 
 
