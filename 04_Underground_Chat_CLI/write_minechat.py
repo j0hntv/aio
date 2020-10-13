@@ -1,6 +1,10 @@
 import asyncio
+import logging
 
 import configargparse
+
+
+logger = logging.getLogger('Sender')
 
 
 def get_argument_parser():
@@ -12,19 +16,26 @@ def get_argument_parser():
     return parser
 
 
-async def auth(writer, userhash):
-    writer.write((userhash + '\n').encode())
+async def auth(writer, hash):
+    writer.write((hash + '\n').encode())
     await writer.drain()
 
 
+async def log(reader):
+    data = await reader.readline()
+    logger.info(data.decode().strip())
+
+
 async def tcp_client(host, port):
-    _, writer = await asyncio.open_connection(host, port)
+    reader, writer = await asyncio.open_connection(host, port)
 
     try:
         await auth(writer, ACCOUNT_HASH)
-
+        await log(reader)
+        
         writer.write(f'{MESSAGE}\n\n'.encode())
         await writer.drain()
+        await log(reader)
 
     finally:
         writer.close()
@@ -32,6 +43,7 @@ async def tcp_client(host, port):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(name)s %(message)s')
     args = get_argument_parser().parse_args()
 
     HOST = args.host
