@@ -8,7 +8,7 @@ import configargparse
 def get_argument_parser():
     parser = configargparse.ArgParser()
     parser.add('--host', default='minechat.dvmn.org', env_var='HOST', help='Chat host')
-    parser.add('--port', type=int, default=5000, env_var='PORT', help='Chat port')
+    parser.add('--port', type=int, default=5000, env_var='LISTEN_PORT', help='Chat port')
     parser.add('--history', default='messages.log', env_var='HISTORY_PATH', help='Path to the message history file')
     return parser
 
