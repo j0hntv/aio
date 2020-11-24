@@ -18,6 +18,7 @@ def get_argument_parser():
 
 async def auth(writer, hash):
     writer.write((hash + '\n').encode())
+    logger.info(hash)
     await writer.drain()
 
 
@@ -30,6 +31,7 @@ async def tcp_client(host, port):
     reader, writer = await asyncio.open_connection(host, port)
 
     try:
+        await log(reader)
         await auth(writer, ACCOUNT_HASH)
         await log(reader)
         
