@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 import configargparse
@@ -16,28 +17,28 @@ def get_argument_parser():
     return parser
 
 
-async def auth(writer, hash):
+async def auth(reader, writer, hash):
+    logger.info((await reader.readline()).decode().strip())
     writer.write((hash + '\n').encode())
-    logger.info(hash)
     await writer.drain()
 
+    response = await reader.readline()
+    auth_info = json.loads(response.decode())
+    logger.info(auth_info)
+    if not auth_info:
+        print('Неизвестный токен. Проверьте его или зарегистрируйте заново.')
+        exit()
 
-async def log(reader):
-    data = await reader.readline()
-    logger.info(data.decode().strip())
+    return auth_info
 
 
 async def tcp_client(host, port):
     reader, writer = await asyncio.open_connection(host, port)
 
     try:
-        await log(reader)
-        await auth(writer, ACCOUNT_HASH)
-        await log(reader)
-        
+        await auth(reader, writer, ACCOUNT_HASH)
         writer.write(f'{MESSAGE}\n\n'.encode())
         await writer.drain()
-        await log(reader)
 
     finally:
         writer.close()
@@ -52,5 +53,7 @@ if __name__ == '__main__':
     PORT = args.port
     ACCOUNT_HASH = args.hash
     MESSAGE = args.message
+
+    print(f'\n{HOST=}, {PORT=}, {ACCOUNT_HASH=}, {MESSAGE=}\n')
 
     asyncio.run(tcp_client(HOST, PORT))
