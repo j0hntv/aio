@@ -32,13 +32,17 @@ async def auth(reader, writer, hash):
     return auth_info
 
 
+async def send_message(reader, writer, message):
+    writer.write(f'{message}\n\n'.encode())
+    await writer.drain()
+
+
 async def tcp_client(host, port):
     reader, writer = await asyncio.open_connection(host, port)
 
     try:
         await auth(reader, writer, ACCOUNT_HASH)
-        writer.write(f'{MESSAGE}\n\n'.encode())
-        await writer.drain()
+        await send_message(reader, writer, MESSAGE)
 
     finally:
         writer.close()
