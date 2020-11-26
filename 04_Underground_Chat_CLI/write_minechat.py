@@ -10,11 +10,29 @@ logger = logging.getLogger('Sender')
 
 def get_argument_parser():
     parser = configargparse.ArgParser()
-    parser.add('--host', default='minechat.dvmn.org', env_var='HOST', help='Chat host')
-    parser.add('--port', type=int, default=5050, env_var='WRITE_PORT', help='Chat port')
+    parser.add('--host', env_var='HOST', help='Chat host')
+    parser.add('--port', type=int, env_var='WRITE_PORT', help='Chat port')
     parser.add('--hash', env_var='ACCOUNT_HASH', help='User account auth hash')
     parser.add('--message', help='Your message text')
     return parser
+
+
+async def register(reader, writer, username):
+    logger.info((await reader.readline()).decode().strip())
+    writer.write('\n'.encode())
+    logger.info((await reader.readline()).decode().strip())
+    writer.write(f'{username}\n'.encode())
+
+    response = await reader.readline()
+    await writer.drain()
+
+    register_info = json.loads(response.decode())
+    logger.info(register_info)
+
+    writer.close()
+    await writer.wait_closed()
+    
+    return register_info
 
 
 async def auth(reader, writer, hash):
