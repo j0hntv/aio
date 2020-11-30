@@ -18,6 +18,10 @@ def get_argument_parser():
     return parser
 
 
+def sanitize(text):
+    return text.replace('\n', ' ')
+
+
 async def register(reader, writer):
     await read_response(reader)
     await submit_message(writer, '\n')
@@ -72,7 +76,7 @@ async def tcp_client(host, port, token=None):
             reader, writer = await asyncio.open_connection(host, port)
             await authorise(reader, writer, token)
 
-        await submit_message(writer, f'{MESSAGE}\n\n')
+        await submit_message(writer, f'{sanitize(MESSAGE)}\n\n')
 
     except Exception as error:
         print(error)
