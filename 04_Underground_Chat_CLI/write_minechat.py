@@ -15,6 +15,7 @@ def get_argument_parser():
     parser.add('-p', '--port', type=int, env_var='WRITE_PORT', help='Chat port')
     parser.add('-t', '--token', env_var='TOKEN', help='User account auth hash')
     parser.add('-m', '--message', help='Your message text')
+    parser.add('-u', '--username', help='User name')
     return parser
 
 
@@ -22,12 +23,16 @@ def sanitize(text):
     return text.replace('\n', ' ')
 
 
-async def register(reader, writer):
+async def register(reader, writer, username):
     await read_response(reader)
     await submit_message(writer, '\n')
 
     await read_response(reader)
-    await submit_message(writer, '\n')
+
+    if username:
+        await submit_message(writer, f'{sanitize(username)}\n')
+    else:
+        await submit_message(writer, '\n')
 
     response = await read_response(reader)
     register_info = json.loads(response)
@@ -62,21 +67,21 @@ async def read_response(reader):
     return decoded_response
 
 
-async def tcp_client(host, port, token=None):
+async def tcp_client(host, port, token=None, username=None, message=None):
     reader, writer = await asyncio.open_connection(host, port)
 
     try:
         if token:
             await authorise(reader, writer, token)
         else:
-            register_info = await register(reader, writer)
+            register_info = await register(reader, writer, username)
             username = register_info['nickname']
             token = register_info['account_hash']
-            print(f'{username=} {token=}')
             reader, writer = await asyncio.open_connection(host, port)
             await authorise(reader, writer, token)
 
-        await submit_message(writer, f'{sanitize(MESSAGE)}\n\n')
+        if message:
+            await submit_message(writer, f'{sanitize(MESSAGE)}\n\n')
 
     except Exception as error:
         print(error)
@@ -96,7 +101,8 @@ if __name__ == '__main__':
     PORT = args.port
     TOKEN = args.token
     MESSAGE = args.message
+    USERNAME = args.username
 
-    print(f'\n{HOST=}, {PORT=}, {TOKEN=}, {MESSAGE=}\n')
+    print(f'\n{HOST=}, {PORT=}, {TOKEN=}, {USERNAME=}, {MESSAGE=}\n')
 
-    asyncio.run(tcp_client(HOST, PORT, TOKEN))
+    asyncio.run(tcp_client(HOST, PORT, TOKEN, USERNAME, MESSAGE))
