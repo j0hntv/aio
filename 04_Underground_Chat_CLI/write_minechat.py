@@ -11,8 +11,8 @@ logger = logging.getLogger('Sender')
 
 def get_argument_parser():
     parser = configargparse.ArgParser()
-    parser.add('--host', env_var='HOST', help='Chat host')
-    parser.add('-p', '--port', type=int, env_var='WRITE_PORT', help='Chat port')
+    parser.add('--host', default='minechat.dvmn.org', env_var='HOST', help='Chat host')
+    parser.add('-p', '--port', type=int, default=5000, env_var='WRITE_PORT', help='Chat port')
     parser.add('-t', '--token', env_var='TOKEN', help='User account auth hash')
     parser.add('-m', '--message', help='Your message text')
     parser.add('-u', '--username', help='User name')
