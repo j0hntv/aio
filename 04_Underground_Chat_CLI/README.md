@@ -1,6 +1,6 @@
 # Консольная утилита для подключения к чату
 
-- Адрес чата: [minechat.dvmn.org](minechat.dvmn.org)
+- Адрес чата: [minechat.dvmn.org](http://minechat.dvmn.org/)
 - Порт для чтения сообщений: `5000`
 - Порт отправки сообщений: `5050`
 
@@ -20,7 +20,7 @@ pip install -r requirements.txt
 ```bash
 python listen_minechat.py
 ```
-### Аргументы командной строки
+Аргументы командной строки
 
 - `--host` - адрес хоста, по умолчанию `minechat.dvmn.org`
 - `-p`, `--port` - номер порта, по умолчанию `5000`
@@ -31,7 +31,7 @@ python listen_minechat.py
 ```bash
 python write_minechat.py
 ```
-### Аргументы командной строки
+Аргументы командной строки
 
 - `--host` - адрес хоста, по умолчанию `minechat.dvmn.org`
 - `-p`, `--port` - номер порта, по умолчанию `5050`
