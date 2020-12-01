@@ -67,7 +67,7 @@ async def read_response(reader):
     return decoded_response
 
 
-async def tcp_client(host, port, token=None, username=None, message=None):
+async def write_to_chat(host, port, token=None, username=None, message=None):
     reader, writer = await asyncio.open_connection(host, port)
 
     try:
@@ -105,4 +105,4 @@ if __name__ == '__main__':
 
     print(f'\n{HOST=}, {PORT=}, {TOKEN=}, {USERNAME=}, {MESSAGE=}\n')
 
-    asyncio.run(tcp_client(HOST, PORT, TOKEN, USERNAME, MESSAGE))
+    asyncio.run(write_to_chat(HOST, PORT, TOKEN, USERNAME, MESSAGE))

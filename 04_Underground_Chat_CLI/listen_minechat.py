@@ -18,7 +18,7 @@ async def save_message(path, message):
         await file.write(message)
 
 
-async def tcp_client(host, port, logfile):
+async def read_chat(host, port, logfile):
     reader, writer = await asyncio.open_connection(host, port)
 
     try:
@@ -44,4 +44,4 @@ if __name__ == '__main__':
     PORT = args.port
     LOGFILE = args.logfile
 
-    asyncio.run(tcp_client(HOST, PORT, LOGFILE))
+    asyncio.run(read_chat(HOST, PORT, LOGFILE))
