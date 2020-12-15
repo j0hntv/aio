@@ -3,10 +3,21 @@ import json
 import logging
 
 import configargparse
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 
 logger = logging.getLogger('Sender')
+
+
+@asynccontextmanager
+async def open_connection(host, port):
+    try:
+        reader, writer = await asyncio.open_connection(host, port)
+        yield reader, writer
+    finally:
+        writer.close()
+        await writer.wait_closed()
 
 
 def get_argument_parser():
@@ -61,33 +72,25 @@ async def read_response(reader):
 
 
 async def write_to_chat(host, port, token=None, username=None, message=None):
-    reader, writer = await asyncio.open_connection(host, port)
-
     try:
-        if token:
-            authorise_info = await authorise(reader, writer, token)
-            if not authorise_info:
-                print('Неизвестный токен. Проверьте его или зарегистрируйте заново.')
-                exit()
-        else:
-            register_info = await register(reader, writer, username)
-            username = register_info['nickname']
-            token = register_info['account_hash']
-            writer.close()
-            await writer.wait_closed()
-
-            reader, writer = await asyncio.open_connection(host, port)
+        async with open_connection(host, port) as (reader, writer):
+            if token:
+                authorise_info = await authorise(reader, writer, token)
+                if not authorise_info:
+                    print('Неизвестный токен. Проверьте его или зарегистрируйте заново.')
+                    exit()
+            else:
+                register_info = await register(reader, writer, username)
+                username = register_info['nickname']
+                token = register_info['account_hash']
+        
+        async with open_connection(host, port) as (reader, writer):
             await authorise(reader, writer, token)
-
-        if message:
-            await submit_message(writer, f'{sanitize(MESSAGE)}\n\n')
+            if message:
+                await submit_message(writer, f'{sanitize(MESSAGE)}\n\n')
 
     except ConnectionError as error:
         print(error)
-
-    finally:
-        writer.close()
-        await writer.wait_closed()
 
 
 if __name__ == '__main__':
