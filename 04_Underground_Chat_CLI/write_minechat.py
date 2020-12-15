@@ -1,9 +1,9 @@
 import asyncio
-from dotenv import load_dotenv
 import json
 import logging
 
 import configargparse
+from dotenv import load_dotenv
 
 
 logger = logging.getLogger('Sender')
@@ -36,9 +36,6 @@ async def register(reader, writer, username):
 
     response = await read_response(reader)
     register_info = json.loads(response)
-
-    writer.close()
-    await writer.wait_closed()
     
     return register_info
 
@@ -76,6 +73,9 @@ async def write_to_chat(host, port, token=None, username=None, message=None):
             register_info = await register(reader, writer, username)
             username = register_info['nickname']
             token = register_info['account_hash']
+            writer.close()
+            await writer.wait_closed()
+
             reader, writer = await asyncio.open_connection(host, port)
             await authorise(reader, writer, token)
 
