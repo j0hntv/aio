@@ -73,19 +73,16 @@ async def read_response(reader):
 
 async def write_to_chat(host, port, token=None, username=None, message=None):
     try:
-        async with open_connection(host, port) as (reader, writer):
-            if token:
-                authorise_info = await authorise(reader, writer, token)
-                if not authorise_info:
-                    print('Неизвестный токен. Проверьте его или зарегистрируйте заново.')
-                    exit()
-            else:
+        if not token:
+            async with open_connection(host, port) as (reader, writer):
                 register_info = await register(reader, writer, username)
-                username = register_info['nickname']
                 token = register_info['account_hash']
-        
+
         async with open_connection(host, port) as (reader, writer):
-            await authorise(reader, writer, token)
+            authorise_info = await authorise(reader, writer, token)
+            if not authorise_info:
+                print('Неизвестный токен. Проверьте его или зарегистрируйте заново.')
+                exit()
             if message:
                 await submit_message(writer, f'{sanitize(MESSAGE)}\n\n')
 
