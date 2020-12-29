@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 
 import aiofiles
@@ -27,6 +28,21 @@ def get_argument_parser():
     parser.add('-p', '--path', default='history.log', env_var='HISTORYPATH', help='Filepath for saving messages')
     parser.add('-u', '--username', help='User name')
     return parser
+
+
+def get_history(filepath):
+    if os.path.exists(filepath):
+        with open(filepath) as file:
+            history = file.read()
+
+        return history
+
+
+def load_history(filepath, queue):
+    history = get_history(filepath)
+    if history:
+        queue.put_nowait(history)
+        queue.put_nowait('========***========\n')
 
 
 async def read_msgs(host, port, queues):
@@ -63,6 +79,8 @@ async def main():
         'status_updates': asyncio.Queue(),
         'saving': asyncio.Queue(),
     }
+
+    load_history(HISTORYPATH, queues['messages'])
 
     draw_coroutine = gui.draw(queues['messages'], queues['sending'], queues['status_updates'])
     msg_coroutine = read_msgs(HOST, LISTEN_PORT, queues)
