@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 
@@ -45,6 +46,42 @@ def load_history(filepath, queue):
         queue.put_nowait('========***========\n')
 
 
+async def request(writer, message):
+    writer.write(message.encode())
+    await writer.drain()
+
+
+async def read_response(reader):
+    response = await reader.readline()
+    decoded_response = response.decode().strip()
+    return decoded_response
+
+
+async def authorise(reader, writer, token):
+    await read_response(reader)
+    await request(writer, f'{token}\n')
+    response = await read_response(reader)
+    authorise_info = json.loads(response)
+    nickname = authorise_info and authorise_info.get('nickname')
+
+    if nickname:
+        authorise_message = f'Выполнена авторизация. Пользователь {nickname}.'
+    else:
+        authorise_message = 'Неверный токен.'
+
+    print(authorise_message)
+    return authorise_info
+
+
+async def send_msgs(host, port, token, queue):
+    async with open_connection(host, port) as (reader, writer):
+        await authorise(reader, writer, token)
+
+        while True:
+            message = await queue.get()
+            print(message)
+
+
 async def read_msgs(host, port, queues):
     async with open_connection(host, port) as (reader, writer):
         while True:
@@ -52,12 +89,6 @@ async def read_msgs(host, port, queues):
             message = data.decode().strip()
             queues['messages'].put_nowait(message)
             queues['saving'].put_nowait(message)
-
-
-async def send_msgs(host, port, queue):
-    while True:
-        message = await queue.get()
-        print(message)
 
 
 async def save_messages(filepath, queue):
@@ -90,7 +121,7 @@ async def main():
 
     draw_coroutine = gui.draw(queues['messages'], queues['sending'], queues['status_updates'])
     read_msg_coroutine = read_msgs(HOST, LISTEN_PORT, queues)
-    send_msg_coroutine = send_msgs(HOST, WRITE_PORT, queues['sending'])
+    send_msg_coroutine = send_msgs(HOST, WRITE_PORT, TOKEN, queues['sending'])
     save_messages_coroutine = save_messages(HISTORYPATH, queues['saving'])
 
     await asyncio.gather(draw_coroutine, read_msg_coroutine, send_msg_coroutine, save_messages_coroutine)
