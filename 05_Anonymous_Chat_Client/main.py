@@ -54,6 +54,12 @@ async def read_msgs(host, port, queues):
             queues['saving'].put_nowait(message)
 
 
+async def send_msgs(host, port, queue):
+    while True:
+        message = await queue.get()
+        print(message)
+
+
 async def save_messages(filepath, queue):
     async with aiofiles.open(filepath, 'a') as file:
         while True:
@@ -83,10 +89,11 @@ async def main():
     load_history(HISTORYPATH, queues['messages'])
 
     draw_coroutine = gui.draw(queues['messages'], queues['sending'], queues['status_updates'])
-    msg_coroutine = read_msgs(HOST, LISTEN_PORT, queues)
+    read_msg_coroutine = read_msgs(HOST, LISTEN_PORT, queues)
+    send_msg_coroutine = send_msgs(HOST, WRITE_PORT, queues['sending'])
     save_messages_coroutine = save_messages(HISTORYPATH, queues['saving'])
 
-    await asyncio.gather(draw_coroutine, msg_coroutine, save_messages_coroutine)
+    await asyncio.gather(draw_coroutine, read_msg_coroutine, send_msg_coroutine, save_messages_coroutine)
 
 
 if __name__ == '__main__':
