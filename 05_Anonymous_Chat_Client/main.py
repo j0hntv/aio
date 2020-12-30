@@ -39,6 +39,10 @@ def get_history(filepath):
         return history
 
 
+def sanitize(text):
+    return text.replace('\n', ' ')
+
+
 def load_history(filepath, queue):
     history = get_history(filepath)
     if history:
@@ -79,7 +83,7 @@ async def send_msgs(host, port, token, queue):
 
         while True:
             message = await queue.get()
-            print(message)
+            await request(writer, f'{sanitize(message)}\n\n')
 
 
 async def read_msgs(host, port, queues):
