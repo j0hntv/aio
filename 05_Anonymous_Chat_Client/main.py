@@ -2,12 +2,17 @@ import asyncio
 import json
 import os
 from contextlib import asynccontextmanager
+from tkinter import messagebox
 
 import aiofiles
 import configargparse
 from dotenv import load_dotenv
 
 import gui
+
+
+class InvalidToken(Exception):
+    pass
 
 
 @asynccontextmanager
@@ -68,18 +73,21 @@ async def authorise(reader, writer, token):
     authorise_info = json.loads(response)
     nickname = authorise_info and authorise_info.get('nickname')
 
-    if nickname:
-        authorise_message = f'Выполнена авторизация. Пользователь {nickname}.'
-    else:
-        authorise_message = 'Неверный токен.'
+    if not nickname:
+        raise InvalidToken
 
+    authorise_message = f'Выполнена авторизация. Пользователь {nickname}.'
     print(authorise_message)
     return authorise_info
 
 
 async def send_msgs(host, port, token, queue):
     async with open_connection(host, port) as (reader, writer):
-        await authorise(reader, writer, token)
+        try:
+            await authorise(reader, writer, token)
+        except InvalidToken:
+            messagebox.showinfo('Неверный токен', 'Проверьте токен, сервер его не узнал.')
+            exit()
 
         while True:
             message = await queue.get()
@@ -128,7 +136,14 @@ async def main():
     send_msg_coroutine = send_msgs(HOST, WRITE_PORT, TOKEN, queues['sending'])
     save_messages_coroutine = save_messages(HISTORYPATH, queues['saving'])
 
-    await asyncio.gather(draw_coroutine, read_msg_coroutine, send_msg_coroutine, save_messages_coroutine)
+    coroutines = [
+        draw_coroutine,
+        read_msg_coroutine,
+        send_msg_coroutine,
+        save_messages_coroutine,
+    ]
+
+    await asyncio.gather(*coroutines, return_exceptions=True)
 
 
 if __name__ == '__main__':
