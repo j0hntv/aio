@@ -66,7 +66,7 @@ async def read_response(reader):
     return decoded_response
 
 
-async def authorise(reader, writer, token):
+async def authorise(reader, writer, token, queues):
     await read_response(reader)
     await request(writer, f'{token}\n')
     response = await read_response(reader)
@@ -76,26 +76,28 @@ async def authorise(reader, writer, token):
     if not nickname:
         raise InvalidToken
 
-    authorise_message = f'Выполнена авторизация. Пользователь {nickname}.'
-    print(authorise_message)
+    queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
+    queues['status_updates'].put_nowait(gui.NicknameReceived(nickname))
+
     return authorise_info
 
 
-async def send_msgs(host, port, token, queue):
+async def send_msgs(host, port, token, queues):
     async with open_connection(host, port) as (reader, writer):
         try:
-            await authorise(reader, writer, token)
+            await authorise(reader, writer, token, queues)
         except InvalidToken:
             messagebox.showinfo('Неверный токен', 'Проверьте токен, сервер его не узнал.')
             exit()
 
         while True:
-            message = await queue.get()
+            message = await queues['sending'].get()
             await request(writer, f'{sanitize(message)}\n\n')
 
 
 async def read_msgs(host, port, queues):
     async with open_connection(host, port) as (reader, writer):
+        queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
         while True:
             data = await reader.readline()
             message = data.decode().strip()
@@ -129,11 +131,14 @@ async def main():
         'saving': asyncio.Queue(),
     }
 
+    queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.INITIATED)
+    queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.INITIATED)
+
     load_history(HISTORYPATH, queues['messages'])
 
     draw_coroutine = gui.draw(queues['messages'], queues['sending'], queues['status_updates'])
     read_msg_coroutine = read_msgs(HOST, LISTEN_PORT, queues)
-    send_msg_coroutine = send_msgs(HOST, WRITE_PORT, TOKEN, queues['sending'])
+    send_msg_coroutine = send_msgs(HOST, WRITE_PORT, TOKEN, queues)
     save_messages_coroutine = save_messages(HISTORYPATH, queues['saving'])
 
     coroutines = [
