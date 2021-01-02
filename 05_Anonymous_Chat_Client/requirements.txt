@@ -1,3 +1,4 @@
 aiofiles==0.6.0
+async-timeout-3.0.1
 ConfigArgParse==1.2.3
 python-dotenv==0.15.0

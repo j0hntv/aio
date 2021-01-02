@@ -7,10 +7,13 @@ from tkinter import messagebox
 
 import aiofiles
 import configargparse
+from async_timeout import timeout
 from dotenv import load_dotenv
 
 import gui
 
+
+TIMEOUT = 2
 
 watchdog_logger = logging.getLogger('watchdog')
 
@@ -69,8 +72,13 @@ def load_history(filepath, queue):
 
 async def watch_for_connection(queues):
     while True:
-        event = await queues['watchdog'].get()
-        watchdog_logger.info(event)
+        try:
+            async with timeout(TIMEOUT):
+                event = await queues['watchdog'].get()
+                watchdog_logger.info(event)
+
+        except asyncio.TimeoutError:
+            watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
 
 
 async def request(writer, message):
