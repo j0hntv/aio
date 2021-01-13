@@ -33,13 +33,22 @@ def setup_logger(logger, fmt='[%(created)d] %(message)s'):
 
 
 @asynccontextmanager
-async def open_connection(host, port):
+async def open_connection(host, port, queues):
     try:
+        queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.INITIATED)
+        queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.INITIATED)
+
         reader, writer = await asyncio.open_connection(host, port)
+
+        queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
+        queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
+
         yield reader, writer
     finally:
         writer.close()
         await writer.wait_closed()
+        queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.CLOSED)
+        queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.CLOSED)
 
 
 def get_argument_parser():
@@ -80,7 +89,6 @@ async def watch_for_connection(queues):
                 watchdog_logger.info(event)
         except asyncio.TimeoutError:
             if cm.expired:
-                watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
                 raise ConnectionError
 
 
@@ -91,9 +99,7 @@ async def handle_connection(funcs, queues):
                 for func in funcs:
                     await task_group.spawn(func)
         except ConnectionError:
-            queues['status_updates'].put_nowait(gui.NicknameReceived('неизвестно'))
-            queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.INITIATED)
-            queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.INITIATED)
+            watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
 
 
 async def request(writer, message):
@@ -118,7 +124,6 @@ async def authorise(reader, writer, token, queues):
     if not nickname:
         raise InvalidToken
 
-    queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
     queues['status_updates'].put_nowait(gui.NicknameReceived(nickname))
     queues['watchdog'].put_nowait('Connection is alive. Authorization done')
 
@@ -126,7 +131,7 @@ async def authorise(reader, writer, token, queues):
 
 
 async def send_msgs(host, port, token, queues):
-    async with open_connection(host, port) as (reader, writer):
+    async with open_connection(host, port, queues) as (reader, writer):
         try:
             await authorise(reader, writer, token, queues)
         except InvalidToken:
@@ -140,8 +145,7 @@ async def send_msgs(host, port, token, queues):
 
 
 async def read_msgs(host, port, queues):
-    async with open_connection(host, port) as (reader, writer):
-        queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
+    async with open_connection(host, port, queues) as (reader, writer):
         while True:
             data = await reader.readline()
             message = data.decode().strip()
@@ -176,9 +180,6 @@ async def main():
         'saving': asyncio.Queue(),
         'watchdog': asyncio.Queue(),
     }
-
-    queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.INITIATED)
-    queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.INITIATED)
 
     load_history(HISTORYPATH, queues['messages'])
 
