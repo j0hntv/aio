@@ -89,6 +89,7 @@ async def watch_for_connection(queues):
                 watchdog_logger.info(event)
         except asyncio.TimeoutError:
             if cm.expired:
+                watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
                 raise ConnectionError
 
 
@@ -98,8 +99,13 @@ async def handle_connection(funcs, queues):
             async with create_task_group() as task_group:
                 for func in funcs:
                     await task_group.spawn(func)
+
         except ConnectionError:
-            watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
+            pass
+
+        except InvalidToken:
+            messagebox.showinfo('Неверный токен', 'Проверьте токен, сервер его не узнал.')
+            exit()
 
 
 async def request(writer, message):
@@ -132,11 +138,7 @@ async def authorise(reader, writer, token, queues):
 
 async def send_msgs(host, port, token, queues):
     async with open_connection(host, port, queues) as (reader, writer):
-        try:
-            await authorise(reader, writer, token, queues)
-        except InvalidToken:
-            messagebox.showinfo('Неверный токен', 'Проверьте токен, сервер его не узнал.')
-            exit()
+        await authorise(reader, writer, token, queues)
 
         while True:
             message = await queues['sending'].get()
