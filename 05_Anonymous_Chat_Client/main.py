@@ -3,10 +3,12 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
+from functools import partial
 from tkinter import messagebox
 
 import aiofiles
 import configargparse
+from anyio import create_task_group, run
 from async_timeout import timeout
 from dotenv import load_dotenv
 
@@ -79,6 +81,19 @@ async def watch_for_connection(queues):
         except asyncio.TimeoutError:
             if cm.expired:
                 watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
+                raise ConnectionError
+
+
+async def handle_connection(funcs, queues):
+    while True:
+        try:
+            async with create_task_group() as task_group:
+                for func in funcs:
+                    await task_group.spawn(func)
+        except ConnectionError:
+            queues['status_updates'].put_nowait(gui.NicknameReceived('неизвестно'))
+            queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.INITIATED)
+            queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.INITIATED)
 
 
 async def request(writer, message):
@@ -167,23 +182,21 @@ async def main():
 
     load_history(HISTORYPATH, queues['messages'])
 
-    draw_coroutine = gui.draw(queues['messages'], queues['sending'], queues['status_updates'])
-    read_msg_coroutine = read_msgs(HOST, LISTEN_PORT, queues)
-    send_msg_coroutine = send_msgs(HOST, WRITE_PORT, TOKEN, queues)
-    save_messages_coroutine = save_messages(HISTORYPATH, queues['saving'])
-    watch_for_connection_coroutine = watch_for_connection(queues)
-
-    coroutines = [
-        draw_coroutine,
-        read_msg_coroutine,
-        send_msg_coroutine,
-        save_messages_coroutine,
-        watch_for_connection_coroutine,
+    handle_connection_funcs = [
+        partial(read_msgs, HOST, LISTEN_PORT, queues),
+        partial(send_msgs, HOST, WRITE_PORT, TOKEN, queues),
+        partial(watch_for_connection, queues),
     ]
 
-    await asyncio.gather(*coroutines, return_exceptions=True)
+    tasks = [
+        asyncio.create_task(gui.draw(queues['messages'], queues['sending'], queues['status_updates'])),
+        asyncio.create_task(save_messages(HISTORYPATH, queues['saving'])),
+        asyncio.create_task(handle_connection(handle_connection_funcs, queues)),
+    ]
+
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 if __name__ == '__main__':
     setup_logger(watchdog_logger)
-    asyncio.run(main())
+    run(main)
