@@ -73,12 +73,12 @@ def load_history(filepath, queue):
 async def watch_for_connection(queues):
     while True:
         try:
-            async with timeout(TIMEOUT):
+            async with timeout(TIMEOUT) as cm:
                 event = await queues['watchdog'].get()
                 watchdog_logger.info(event)
-
         except asyncio.TimeoutError:
-            watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
+            if cm.expired:
+                watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
 
 
 async def request(writer, message):
