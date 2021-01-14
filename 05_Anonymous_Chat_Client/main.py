@@ -8,7 +8,7 @@ from tkinter import messagebox
 
 import aiofiles
 import configargparse
-from anyio import create_task_group, run
+from anyio import create_task_group, run, ExceptionGroup
 from async_timeout import timeout
 from dotenv import load_dotenv
 
@@ -100,7 +100,7 @@ async def handle_connection(funcs, queues):
                 for func in funcs:
                     await task_group.spawn(func)
 
-        except ConnectionError:
+        except (ConnectionError, ExceptionGroup):
             pass
 
         except InvalidToken:
@@ -191,13 +191,10 @@ async def main():
         partial(watch_for_connection, queues),
     ]
 
-    tasks = [
-        asyncio.create_task(gui.draw(queues['messages'], queues['sending'], queues['status_updates'])),
-        asyncio.create_task(save_messages(HISTORYPATH, queues['saving'])),
-        asyncio.create_task(handle_connection(handle_connection_funcs, queues)),
-    ]
-
-    await asyncio.gather(*tasks, return_exceptions=True)
+    async with create_task_group() as task_group:
+        await task_group.spawn(gui.draw, queues['messages'], queues['sending'], queues['status_updates'])
+        await task_group.spawn(save_messages, HISTORYPATH, queues['saving'])
+        await task_group.spawn(handle_connection, handle_connection_funcs, queues)
 
 
 if __name__ == '__main__':
