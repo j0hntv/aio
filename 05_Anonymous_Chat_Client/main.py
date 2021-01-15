@@ -3,7 +3,6 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
-from functools import partial
 from tkinter import messagebox
 
 import aiofiles
@@ -93,12 +92,13 @@ async def watch_for_connection(queues):
                 raise ConnectionError
 
 
-async def handle_connection(funcs, queues):
+async def handle_connection(host, port, token, queues):
     while True:
         try:
-            async with create_task_group() as task_group:
-                for func in funcs:
-                    await task_group.spawn(func)
+            async with open_connection(host, port, queues) as (reader, writer):
+                async with create_task_group() as task_group:
+                    await task_group.spawn(send_msgs, reader, writer, token, queues)
+                    await task_group.spawn(watch_for_connection, queues)
 
         except (ConnectionError, ExceptionGroup):
             pass
@@ -136,14 +136,12 @@ async def authorise(reader, writer, token, queues):
     return authorise_info
 
 
-async def send_msgs(host, port, token, queues):
-    async with open_connection(host, port, queues) as (reader, writer):
-        await authorise(reader, writer, token, queues)
-
-        while True:
-            message = await queues['sending'].get()
-            await request(writer, f'{sanitize(message)}\n\n')
-            queues['watchdog'].put_nowait('Connection is alive. Message sent')
+async def send_msgs(reader, writer, token, queues):
+    await authorise(reader, writer, token, queues)
+    while True:
+        message = await queues['sending'].get()
+        await request(writer, f'{sanitize(message)}\n\n')
+        queues['watchdog'].put_nowait('Connection is alive. Message sent')
 
 
 async def read_msgs(host, port, queues):
@@ -165,6 +163,7 @@ async def save_messages(filepath, queue):
 
 
 async def main():
+    setup_logger(watchdog_logger)
     load_dotenv()
     args = get_argument_parser().parse_args()
 
@@ -185,18 +184,12 @@ async def main():
 
     load_history(HISTORYPATH, queues['messages'])
 
-    handle_connection_funcs = [
-        partial(read_msgs, HOST, LISTEN_PORT, queues),
-        partial(send_msgs, HOST, WRITE_PORT, TOKEN, queues),
-        partial(watch_for_connection, queues),
-    ]
-
     async with create_task_group() as task_group:
         await task_group.spawn(gui.draw, queues['messages'], queues['sending'], queues['status_updates'])
         await task_group.spawn(save_messages, HISTORYPATH, queues['saving'])
-        await task_group.spawn(handle_connection, handle_connection_funcs, queues)
+        await task_group.spawn(read_msgs, HOST, LISTEN_PORT, queues)
+        await task_group.spawn(handle_connection, HOST, WRITE_PORT, TOKEN, queues)
 
 
 if __name__ == '__main__':
-    setup_logger(watchdog_logger)
     run(main)
