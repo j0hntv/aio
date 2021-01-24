@@ -86,10 +86,9 @@ async def watch_for_connection(queues):
             async with timeout(TIMEOUT) as cm:
                 event = await queues['watchdog'].get()
                 watchdog_logger.info(event)
-        except asyncio.TimeoutError:
+        finally:
             if cm.expired:
                 watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
-                raise ConnectionError
 
 
 async def handle_connection(host, port, token, queues):
@@ -100,7 +99,7 @@ async def handle_connection(host, port, token, queues):
                     await task_group.spawn(send_msgs, reader, writer, token, queues)
                     await task_group.spawn(watch_for_connection, queues)
 
-        except (ConnectionError, ExceptionGroup):
+        except (asyncio.TimeoutError, ExceptionGroup):
             pass
 
         except InvalidToken:
