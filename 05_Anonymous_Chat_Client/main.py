@@ -7,12 +7,12 @@ from contextlib import asynccontextmanager
 from tkinter import messagebox
 
 import aiofiles
-import configargparse
 from anyio import create_task_group, run, ExceptionGroup, sleep
 from async_timeout import timeout
 from dotenv import load_dotenv
 
 import gui
+from utils import get_argument_parser
 
 
 PING_PONG_ERROR_TIMEOUT = 1
@@ -60,17 +60,6 @@ async def open_connection(host, port, queues):
                 await writer.wait_closed()
                 queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.CLOSED)
                 queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.CLOSED)
-
-
-def get_argument_parser():
-    parser = configargparse.ArgParser()
-    parser.add('--host', default='minechat.dvmn.org', env_var='HOST', help='Host')
-    parser.add('-l', '--listen', type=int, default=5000, env_var='LISTEN', help='Listen port')
-    parser.add('-w', '--write', type=int, default=5050, env_var='WRITE', help='Write port')
-    parser.add('-t', '--token', env_var='TOKEN', help='User account auth hash')
-    parser.add('-p', '--path', default='history.log', env_var='HISTORYPATH', help='Filepath for saving messages')
-    parser.add('-u', '--username', help='User name')
-    return parser
 
 
 def get_history(filepath):
