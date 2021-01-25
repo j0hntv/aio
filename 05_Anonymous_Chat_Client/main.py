@@ -98,7 +98,7 @@ async def watch_for_connection(queues):
         watchdog_logger.info(event)
 
 
-async def ping_pong(reader, writer, token, queues):
+async def ping_pong(reader, writer, queues):
     while True:
         try:
             async with timeout(PING_PONG_ERROR_TIMEOUT) as cm:
@@ -122,7 +122,7 @@ async def handle_connection(host, read_port, write_port, token, queues):
                 async with create_task_group() as task_group:
                     await task_group.spawn(send_msgs, reader, writer, token, queues)
                     await task_group.spawn(read_msgs, host, read_port, queues)
-                    await task_group.spawn(ping_pong, reader, writer, token, queues)
+                    await task_group.spawn(ping_pong, reader, writer, queues)
 
         except InvalidToken:
             messagebox.showinfo('Неверный токен', 'Проверьте токен, сервер его не узнал.')
@@ -187,12 +187,12 @@ async def main():
     load_dotenv()
     args = get_argument_parser().parse_args()
 
-    HOST = args.host
-    LISTEN_PORT = args.listen
-    WRITE_PORT = args.write
-    TOKEN = args.token
-    USERNAME = args.username
-    HISTORYPATH = args.path
+    host = args.host
+    listen_port = args.listen
+    write_port = args.write
+    token = args.token
+    username = args.username
+    historypath = args.path
 
     queues = {
         'messages': asyncio.Queue(),
@@ -202,12 +202,12 @@ async def main():
         'watchdog': asyncio.Queue(),
     }
 
-    load_history(HISTORYPATH, queues['messages'])
+    load_history(historypath, queues['messages'])
 
     async with create_task_group() as task_group:
         await task_group.spawn(gui.draw, queues['messages'], queues['sending'], queues['status_updates'])
-        await task_group.spawn(save_messages, HISTORYPATH, queues['saving'])
-        await task_group.spawn(handle_connection, HOST, LISTEN_PORT, WRITE_PORT, TOKEN, queues)
+        await task_group.spawn(save_messages, historypath, queues['saving'])
+        await task_group.spawn(handle_connection, host, listen_port, write_port, token, queues)
         await task_group.spawn(watch_for_connection, queues)
 
 
