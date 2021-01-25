@@ -2,19 +2,22 @@ import asyncio
 import json
 import logging
 import os
+import socket
 from contextlib import asynccontextmanager
 from tkinter import messagebox
 
 import aiofiles
 import configargparse
-from anyio import create_task_group, run, ExceptionGroup
+from anyio import create_task_group, run, ExceptionGroup, sleep
 from async_timeout import timeout
 from dotenv import load_dotenv
 
 import gui
 
 
-TIMEOUT = 2
+PING_PONG_ERROR_TIMEOUT = 1
+PING_PONG_DELAY = 2
+CONNECTION_ERROR_TIMEOUT = 3
 
 watchdog_logger = logging.getLogger('watchdog')
 
@@ -33,21 +36,30 @@ def setup_logger(logger, fmt='[%(created)d] %(message)s'):
 
 @asynccontextmanager
 async def open_connection(host, port, queues):
-    try:
-        queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.INITIATED)
-        queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.INITIATED)
+    writer = None
 
-        reader, writer = await asyncio.open_connection(host, port)
+    while not writer:
+        try:
+            queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.INITIATED)
+            queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.INITIATED)
 
-        queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
-        queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
+            reader, writer = await asyncio.open_connection(host, port)
 
-        yield reader, writer
-    finally:
-        writer.close()
-        await writer.wait_closed()
-        queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.CLOSED)
-        queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.CLOSED)
+            queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
+            queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
+
+            yield reader, writer
+
+        except (ConnectionError, socket.gaierror, asyncio.TimeoutError, ExceptionGroup):
+            queues['watchdog'].put_nowait('No connection, try again...')
+            await sleep(CONNECTION_ERROR_TIMEOUT)
+
+        finally:
+            if writer:
+                writer.close()
+                await writer.wait_closed()
+                queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.CLOSED)
+                queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.CLOSED)
 
 
 def get_argument_parser():
@@ -82,25 +94,35 @@ def load_history(filepath, queue):
 
 async def watch_for_connection(queues):
     while True:
-        try:
-            async with timeout(TIMEOUT) as cm:
-                event = await queues['watchdog'].get()
-                watchdog_logger.info(event)
-        finally:
-            if cm.expired:
-                watchdog_logger.info(f'{TIMEOUT}s timeout is elapsed')
+        event = await queues['watchdog'].get()
+        watchdog_logger.info(event)
 
 
-async def handle_connection(host, port, token, queues):
+async def ping_pong(reader, writer, token, queues):
     while True:
         try:
-            async with open_connection(host, port, queues) as (reader, writer):
+            async with timeout(PING_PONG_ERROR_TIMEOUT) as cm:
+                await reader.readline()
+                writer.write('\n'.encode())
+                await writer.drain()
+
+            queues['watchdog'].put_nowait('Ping pong: connection is alive')
+            await sleep(PING_PONG_DELAY)
+
+        finally:
+            if cm.expired:
+                watchdog_logger.info(f'{PING_PONG_ERROR_TIMEOUT}s timeout is elapsed')
+
+
+async def handle_connection(host, read_port, write_port, token, queues):
+    while True:
+        try:
+            async with open_connection(host, write_port, queues) as (reader, writer):
+                await authorise(reader, writer, token, queues)
                 async with create_task_group() as task_group:
                     await task_group.spawn(send_msgs, reader, writer, token, queues)
-                    await task_group.spawn(watch_for_connection, queues)
-
-        except (asyncio.TimeoutError, ExceptionGroup):
-            pass
+                    await task_group.spawn(read_msgs, host, read_port, queues)
+                    await task_group.spawn(ping_pong, reader, writer, token, queues)
 
         except InvalidToken:
             messagebox.showinfo('Неверный токен', 'Проверьте токен, сервер его не узнал.')
@@ -136,7 +158,6 @@ async def authorise(reader, writer, token, queues):
 
 
 async def send_msgs(reader, writer, token, queues):
-    await authorise(reader, writer, token, queues)
     while True:
         message = await queues['sending'].get()
         await request(writer, f'{sanitize(message)}\n\n')
@@ -186,8 +207,8 @@ async def main():
     async with create_task_group() as task_group:
         await task_group.spawn(gui.draw, queues['messages'], queues['sending'], queues['status_updates'])
         await task_group.spawn(save_messages, HISTORYPATH, queues['saving'])
-        await task_group.spawn(read_msgs, HOST, LISTEN_PORT, queues)
-        await task_group.spawn(handle_connection, HOST, WRITE_PORT, TOKEN, queues)
+        await task_group.spawn(handle_connection, HOST, LISTEN_PORT, WRITE_PORT, TOKEN, queues)
+        await task_group.spawn(watch_for_connection, queues)
 
 
 if __name__ == '__main__':
