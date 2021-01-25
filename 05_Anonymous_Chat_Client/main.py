@@ -212,4 +212,7 @@ async def main():
 
 
 if __name__ == '__main__':
-    run(main)
+    try:
+        run(main)
+    except (gui.TkAppClosed, KeyboardInterrupt):
+        pass
