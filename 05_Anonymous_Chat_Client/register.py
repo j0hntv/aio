@@ -2,6 +2,7 @@ import asyncio
 import json
 import socket
 import sys
+import textwrap
 import tkinter as tk
 from tkinter import messagebox
 from contextlib import asynccontextmanager
@@ -19,6 +20,9 @@ async def open_connection(host, port):
     try:
         reader, writer = await asyncio.open_connection(host, port)
         yield reader, writer
+
+    except (socket.gaierror, asyncio.TimeoutError):
+        raise ConnectionError
 
     finally:
         if writer:
@@ -115,9 +119,20 @@ async def main():
         'register_queue': asyncio.Queue(),
     }
 
-    async with create_task_group() as task_group:
-        await task_group.spawn(draw, queues)
-        await task_group.spawn(register, host, port, queues)
+    try:
+        async with create_task_group() as task_group:
+            await task_group.spawn(draw, queues)
+            await task_group.spawn(register, host, port, queues)
+    except ConnectionError:
+        error_message = textwrap.dedent(
+            '''\
+            Прибежали в избу дети,
+            Второпях зовут отца:
+            Папа, папа, нету сети,
+            И не подключаецца!'''
+        )
+        messagebox.showerror('Ошибка подключения', error_message)
+        sys.exit()
 
 
 if __name__ == '__main__':
