@@ -165,7 +165,6 @@ async def save_messages(filepath, queue):
 
 
 async def main():
-    setup_logger(watchdog_logger)
     load_dotenv()
     args = get_argument_parser().parse_args()
 
@@ -173,8 +172,10 @@ async def main():
     listen_port = args.listen
     write_port = args.write
     token = args.token
-    username = args.username
     historypath = args.path
+    debug = args.debug in [1, 'True', 'true']
+
+    setup_logger(watchdog_logger, debug=debug)
 
     queues = {
         'messages': asyncio.Queue(),

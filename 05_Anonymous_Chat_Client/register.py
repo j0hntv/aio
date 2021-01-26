@@ -45,7 +45,7 @@ def get_username(entry, queue):
 
 def save_token(path, token):
     with open(path, 'w') as file:
-        file.write(f'TOKEN={token}')
+        file.write(f'TOKEN={token}\n')
 
 
 async def register(host, port, queues):

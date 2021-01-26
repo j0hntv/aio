@@ -10,13 +10,12 @@ def get_argument_parser():
     parser.add('-w', '--write', type=int, default=5050, env_var='WRITE', help='Write port')
     parser.add('-t', '--token', env_var='TOKEN', help='User account auth hash')
     parser.add('-p', '--path', default='history.log', env_var='HISTORYPATH', help='Filepath for saving messages')
-    parser.add('-d', '--debug', default=True, env_var='DEBUG', help='Debug mode')
-    parser.add('-u', '--username', help='User name')
+    parser.add('-d', '--debug', default=False, env_var='DEBUG', help='Debug mode')
     return parser
 
 
-def setup_logger(logger, fmt='[%(created)d] %(message)s'):
-    logger.setLevel(logging.INFO)
+def setup_logger(logger, fmt='[%(created)d] %(message)s', debug=False):
+    logger.setLevel(logging.DEBUG if debug else logging.ERROR)
     handler = logging.StreamHandler()
     formatter = logging.Formatter(fmt)
     handler.setFormatter(formatter)
