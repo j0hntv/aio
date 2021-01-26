@@ -1,7 +1,9 @@
 import asyncio
 import json
 import socket
+import sys
 import tkinter as tk
+from tkinter import messagebox
 from contextlib import asynccontextmanager
 
 from anyio import create_task_group, run, sleep
@@ -35,8 +37,20 @@ async def read_response(reader):
     return decoded_response
 
 
+def get_username(entry, queue):
+    username = entry.get()
+    queue['register_queue'].put_nowait(username)
+    entry.delete(0, tk.END)
+
+
+def save_token(path, token):
+    with open(path, 'w') as file:
+        file.write(f'TOKEN={token}')
+
+
 async def register(host, port, queues):
     username = await queues['register_queue'].get()
+
     async with open_connection(host, port) as (reader, writer):
         await read_response(reader)
         await submit_message(writer, '\n')
@@ -49,27 +63,16 @@ async def register(host, port, queues):
             await submit_message(writer, '\n')
 
         response = await read_response(reader)
-        register_info = json.loads(response)
-        queues['register_info_queue'].put_nowait(register_info)
 
-        return register_info
+    register_info = json.loads(response)
 
-
-async def update_status(queues, user_label, token_label):
-    register_info = await queues['register_info_queue'].get()
+    token = register_info.get('account_hash')
+    save_token('.env', token)
 
     username = register_info.get('nickname')
-    token = register_info.get('account_hash')
-
-    user_label['text'] = f'Username: {username}'
-    token_label['text'] = f'Token: {token}'
-
-
-
-def get_username(entry, queue):
-    username = entry.get()
-    queue['register_queue'].put_nowait(username)
-    entry.delete(0, tk.END)
+    message = f'Зарегистрирован аккаунт:\n{username}'
+    messagebox.showinfo('Инфо', message)
+    sys.exit()
 
 
 async def update_tk(root_frame, interval=1 / 120):
@@ -92,24 +95,13 @@ async def draw(queues):
     input_field.bind('<Return>', lambda event: get_username(input_field, queues))
 
     register_button = tk.Button(text='Регистрация')
-
-    user_label = tk.Label(width=50)
-    user_label['text'] = 'Username:'
-
-    token_label = tk.Label(width=50)
-    token_label['text'] = 'Token:'
-
     register_button.bind('<Button-1>', lambda event: get_username(input_field, queues))
 
-    input_frame.pack(ipadx=10, ipady=4, padx=10, pady=10)
+    input_frame.pack(ipadx=10, ipady=4, padx=10, pady=5)
     input_field.pack()
-    register_button.pack()
-    user_label.pack()
-    token_label.pack()
+    register_button.pack(pady=10)
 
-    async with create_task_group() as task_group:
-        await task_group.spawn(update_tk, root)
-        await task_group.spawn(update_status, queues, user_label, token_label)
+    await update_tk(root)
 
 
 async def main():
@@ -121,7 +113,6 @@ async def main():
 
     queues = {
         'register_queue': asyncio.Queue(),
-        'register_info_queue': asyncio.Queue(),
     }
 
     async with create_task_group() as task_group:
@@ -130,5 +121,7 @@ async def main():
 
 
 if __name__ == '__main__':
-    run(main)
-    
+    try:
+        run(main)
+    except (TkAppClosed, KeyboardInterrupt):
+        sys.exit()
