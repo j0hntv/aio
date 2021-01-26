@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 import gui
 from utils import get_argument_parser
 from utils import setup_logger
+from utils import submit_message, read_response
 
 
 PING_PONG_ERROR_TIMEOUT = 1
@@ -111,21 +112,10 @@ async def handle_connection(host, read_port, write_port, token, queues):
             exit()
 
 
-async def request(writer, message):
-    writer.write(message.encode())
-    await writer.drain()
-
-
-async def read_response(reader):
-    response = await reader.readline()
-    decoded_response = response.decode().strip()
-    return decoded_response
-
-
 async def authorise(reader, writer, token, queues):
     await read_response(reader)
     queues['watchdog'].put_nowait('Connection is alive. Prompt before auth')
-    await request(writer, f'{token}\n')
+    await submit_message(writer, f'{token}\n')
     response = await read_response(reader)
     authorise_info = json.loads(response)
     nickname = authorise_info and authorise_info.get('nickname')
@@ -142,7 +132,7 @@ async def authorise(reader, writer, token, queues):
 async def send_msgs(reader, writer, token, queues):
     while True:
         message = await queues['sending'].get()
-        await request(writer, f'{sanitize(message)}\n\n')
+        await submit_message(writer, f'{sanitize(message)}\n\n')
         queues['watchdog'].put_nowait('Connection is alive. Message sent')
 
 

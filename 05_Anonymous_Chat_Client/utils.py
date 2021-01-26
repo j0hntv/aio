@@ -20,3 +20,14 @@ def setup_logger(logger, fmt='[%(created)d] %(message)s', debug=False):
     formatter = logging.Formatter(fmt)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+
+
+async def submit_message(writer, message):
+    writer.write(message.encode())
+    await writer.drain()
+
+
+async def read_response(reader):
+    response = await reader.readline()
+    decoded_response = response.decode().strip()
+    return decoded_response

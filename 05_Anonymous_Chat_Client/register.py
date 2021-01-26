@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from gui import TkAppClosed
 from utils import get_argument_parser
+from utils import submit_message, read_response
 
 
 @asynccontextmanager
@@ -28,17 +29,6 @@ async def open_connection(host, port):
         if writer:
             writer.close()
             await writer.wait_closed()
-
-
-async def submit_message(writer, message):
-    writer.write(message.encode())
-    await writer.drain()
-
-
-async def read_response(reader):
-    response = await reader.readline()
-    decoded_response = response.decode().strip()
-    return decoded_response
 
 
 def get_username(entry, queue):
