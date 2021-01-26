@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 import gui
 from utils import get_argument_parser
+from utils import setup_logger
 
 
 PING_PONG_ERROR_TIMEOUT = 1
@@ -24,14 +25,6 @@ watchdog_logger = logging.getLogger('watchdog')
 
 class InvalidToken(Exception):
     pass
-
-
-def setup_logger(logger, fmt='[%(created)d] %(message)s'):
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(fmt)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
 
 
 @asynccontextmanager
