@@ -39,7 +39,7 @@ def get_username(entry, queue):
 
 def save_token(path, token):
     with open(path, 'w') as file:
-        file.write(f'TOKEN={token}\n')
+        file.write(f'MINECHAT_TOKEN={token}\n')
 
 
 async def register(host, port, queues):

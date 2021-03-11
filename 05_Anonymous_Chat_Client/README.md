@@ -45,13 +45,13 @@ python main.py
 HOST=minechat.dvmn.org
 LISTEN_PORT=5000
 WRITE_PORT=5050
-TOKEN=...
+MINECHAT_TOKEN=...
 LOGFILE=messages.log
 DEBUG=True
 ```
 - После регистрации этот файл появится автоматически:
 ```bash
-TOKEN=...
+MINECHAT_TOKEN=...
 ```
 # Цели проекта
 
