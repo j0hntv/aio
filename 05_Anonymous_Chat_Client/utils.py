@@ -22,8 +22,19 @@ def setup_logger(logger, fmt='[%(created)d] %(message)s', debug=False):
     logger.addHandler(handler)
 
 
-async def submit_message(writer, message):
+def sanitize_text(text):
+    return text.replace('\n', ' ')
+
+
+async def submit_message(writer, message, sanitize=True, add_line_break=True):
+    if sanitize:
+        message = sanitize_text(message)
+
+    if add_line_break:
+        message += '\n\n'
+    
     writer.write(message.encode())
+
     await writer.drain()
 
 

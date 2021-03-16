@@ -47,14 +47,14 @@ async def register(host, port, queues):
 
     async with open_connection(host, port) as (reader, writer):
         await read_response(reader)
-        await submit_message(writer, '\n')
+        await submit_message(writer, '\n', sanitize=False, add_line_break=False)
 
         await read_response(reader)
 
         if username:
-            await submit_message(writer, f'{username}\n')
+            await submit_message(writer, username)
         else:
-            await submit_message(writer, '\n')
+            await submit_message(writer, '\n', sanitize=False, add_line_break=False)
 
         response = await read_response(reader)
 
