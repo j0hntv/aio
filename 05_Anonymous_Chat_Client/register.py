@@ -103,7 +103,7 @@ async def main():
     args = get_argument_parser().parse_args()
 
     host = args.host
-    port = args.write
+    write_port = args.write_port
 
     queues = {
         'register_queue': asyncio.Queue(),
@@ -112,7 +112,7 @@ async def main():
     try:
         async with create_task_group() as task_group:
             await task_group.spawn(draw, queues)
-            await task_group.spawn(register, host, port, queues)
+            await task_group.spawn(register, host, write_port, queues)
     except ConnectionError:
         error_message = textwrap.dedent(
             '''\

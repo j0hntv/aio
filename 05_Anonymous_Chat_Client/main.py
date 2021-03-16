@@ -64,10 +64,6 @@ def get_history(filepath):
         return history
 
 
-def sanitize(text):
-    return text.replace('\n', ' ')
-
-
 def load_history(filepath, queue):
     history = get_history(filepath)
     if history:
@@ -115,7 +111,7 @@ async def handle_connection(host, read_port, write_port, token, queues):
 async def authorise(reader, writer, token, queues):
     await read_response(reader)
     queues['watchdog'].put_nowait('Connection is alive. Prompt before auth')
-    await submit_message(writer, f'{token}\n')
+    await submit_message(writer, token)
     response = await read_response(reader)
     authorise_info = json.loads(response)
     nickname = authorise_info and authorise_info.get('nickname')
@@ -132,7 +128,7 @@ async def authorise(reader, writer, token, queues):
 async def send_msgs(reader, writer, token, queues):
     while True:
         message = await queues['sending'].get()
-        await submit_message(writer, f'{sanitize(message)}\n\n')
+        await submit_message(writer, message)
         queues['watchdog'].put_nowait('Connection is alive. Message sent')
 
 
@@ -159,8 +155,8 @@ async def main():
     args = get_argument_parser().parse_args()
 
     host = args.host
-    listen_port = args.listen
-    write_port = args.write
+    listen_port = args.listen_port
+    write_port = args.write_port
     token = args.token
     historypath = args.path
     debug = args.debug in [1, 'True', 'true']
