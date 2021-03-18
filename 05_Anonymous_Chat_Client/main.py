@@ -2,8 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import socket
-from contextlib import asynccontextmanager
 from tkinter import messagebox
 
 import aiofiles
@@ -12,9 +10,17 @@ from async_timeout import timeout
 from dotenv import load_dotenv
 
 import gui
-from utils import get_argument_parser
-from utils import setup_logger
-from utils import submit_message, read_response
+from download_tools import (
+    notify_connection_established,
+    open_connection,
+    reconnect,
+)
+from utils import (
+    get_argument_parser,
+    setup_logger,
+    submit_message,
+    read_response,
+)
 
 
 PING_PONG_ERROR_TIMEOUT = 1
@@ -26,34 +32,6 @@ watchdog_logger = logging.getLogger('watchdog')
 
 class InvalidToken(Exception):
     pass
-
-
-@asynccontextmanager
-async def open_connection(host, port, queues):
-    writer = None
-
-    while not writer:
-        try:
-            queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.INITIATED)
-            queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.INITIATED)
-
-            reader, writer = await asyncio.open_connection(host, port)
-
-            queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
-            queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
-
-            yield reader, writer
-
-        except (ConnectionError, socket.gaierror, asyncio.TimeoutError, ExceptionGroup):
-            queues['watchdog'].put_nowait('No connection, try again...')
-            await sleep(CONNECTION_ERROR_TIMEOUT)
-
-        finally:
-            if writer:
-                writer.close()
-                await writer.wait_closed()
-                queues['status_updates'].put_nowait(gui.ReadConnectionStateChanged.CLOSED)
-                queues['status_updates'].put_nowait(gui.SendingConnectionStateChanged.CLOSED)
 
 
 def get_history(filepath):
@@ -96,7 +74,7 @@ async def ping_pong(reader, writer, queues):
 async def handle_connection(host, read_port, write_port, token, queues):
     while True:
         try:
-            async with open_connection(host, write_port, queues) as (reader, writer):
+            async with reconnect(host, write_port, queues) as (reader, writer):
                 await authorise(reader, writer, token, queues)
                 async with create_task_group() as task_group:
                     await task_group.spawn(send_msgs, reader, writer, token, queues)
@@ -106,6 +84,10 @@ async def handle_connection(host, read_port, write_port, token, queues):
         except InvalidToken:
             messagebox.showinfo('Неверный токен', 'Проверьте токен, сервер его не узнал.')
             exit()
+
+        except (ConnectionError, ExceptionGroup):
+            queues['watchdog'].put_nowait('No connection, try again...')
+            await sleep(CONNECTION_ERROR_TIMEOUT)
 
 
 async def authorise(reader, writer, token, queues):
@@ -133,7 +115,7 @@ async def send_msgs(reader, writer, token, queues):
 
 
 async def read_msgs(host, port, queues):
-    async with open_connection(host, port, queues) as (reader, writer):
+    async with open_connection(host, port) as (reader, writer):
         while True:
             data = await reader.readline()
             message = data.decode().strip()

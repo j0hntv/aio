@@ -1,34 +1,20 @@
 import asyncio
 import json
-import socket
 import sys
 import textwrap
 import tkinter as tk
 from tkinter import messagebox
-from contextlib import asynccontextmanager
 
 from anyio import create_task_group, run, sleep
 from dotenv import load_dotenv
 
 from gui import TkAppClosed
-from utils import get_argument_parser
-from utils import submit_message, read_response
-
-
-@asynccontextmanager
-async def open_connection(host, port):
-    writer = None
-    try:
-        reader, writer = await asyncio.open_connection(host, port)
-        yield reader, writer
-
-    except (socket.gaierror, asyncio.TimeoutError):
-        raise ConnectionError
-
-    finally:
-        if writer:
-            writer.close()
-            await writer.wait_closed()
+from download_tools import open_connection
+from utils import (
+    get_argument_parser,
+    submit_message,
+    read_response,
+)
 
 
 def get_username(entry, queue):
