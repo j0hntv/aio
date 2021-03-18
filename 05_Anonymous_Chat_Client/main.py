@@ -10,7 +10,7 @@ from async_timeout import timeout
 from dotenv import load_dotenv
 
 import gui
-from download_tools import (
+from connection_tools import (
     notify_connection_established,
     open_connection,
     reconnect,

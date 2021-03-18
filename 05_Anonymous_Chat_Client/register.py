@@ -9,7 +9,7 @@ from anyio import create_task_group, run, sleep
 from dotenv import load_dotenv
 
 from gui import TkAppClosed
-from download_tools import open_connection
+from connection_tools import open_connection
 from utils import (
     get_argument_parser,
     submit_message,
