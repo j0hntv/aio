@@ -25,7 +25,7 @@ async def fetch(session, url):
         return await response.text()
 
 
-async def process_article(session, url, morph, charged_words):
+async def process_article(session, url, morph, charged_words, results):
     html = await fetch(session, url)
     title = get_article_title(html)
 
@@ -36,21 +36,44 @@ async def process_article(session, url, morph, charged_words):
     score = calculate_jaundice_rate(words, charged_words)
 
     words_count = len(words)
+    
+    results.append(
+        {
+            'title': title,
+            'score': score,
+            'words_count': words_count,
+        }
+    )
 
-    print('Заголовок:', title)
-    print('Рейтинг:', score)
-    print('Слов в статье:', words_count)
-    print('===')
+
+def print_process_article_results(results):
+    for result in results:
+        print()
+        print(f'Заголовок: {result["title"]}')
+        print(f'Рейтинг: {result["score"]}')
+        print(f'Слов в статье: {result["words_count"]}')
+        print('===')
 
 
 async def main():
     morph = pymorphy2.MorphAnalyzer()
     charged_words = get_words_list('negative_words.txt')
-    
+
+    process_article_results = []
+
     async with aiohttp.ClientSession() as session:
         async with create_task_group() as task_group:
             for url in TEST_ARTICLES:
-                await task_group.spawn(process_article, session, url, morph, charged_words)
+                args = [
+                    session,
+                    url,
+                    morph,
+                    charged_words,
+                    process_article_results
+                ]
+                await task_group.spawn(process_article, *args)
+
+    print_process_article_results(process_article_results)
 
 
 if __name__ == '__main__':
