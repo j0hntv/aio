@@ -12,6 +12,7 @@ from utils import get_words_list, get_article_title
 
 
 FETCH_TIMEOUT = 1
+
 TEST_ARTICLES = [
     'https://example.com',
     'https://lenta.ru/articles/2021/03/20/led/',
@@ -40,6 +41,8 @@ async def fetch(session, url):
 
 
 async def process_article(session, url, morph, charged_words, results):
+    score = None
+    words_count = None
     try:
         html = await fetch(session, url)
 
@@ -53,42 +56,27 @@ async def process_article(session, url, morph, charged_words, results):
 
         words_count = len(words)
 
-        results.append(
-            {
-                'title': title,
-                'status': ProcessingStatus.OK.value,
-                'score': score,
-                'words_count': words_count,
-            }
-        )
+        status = ProcessingStatus.OK.value
+
     except ArticleNotFound:
-        results.append(
-            {
-                'title': title,
-                'status': ProcessingStatus.PARSING_ERROR.value,
-                'score': None,
-                'words_count': None,
-            }
-        )
+        status = ProcessingStatus.PARSING_ERROR.value
 
     except aiohttp.ClientError:
-        results.append(
-            {
-                'title': 'URL not exist',
-                'status': ProcessingStatus.FETCH_ERROR.value,
-                'score': None,
-                'words_count': None,
-            }
-        )
+        title = f'URL <{url}> not exist'
+        status = ProcessingStatus.FETCH_ERROR.value
+
     except asyncio.exceptions.TimeoutError:
-        results.append(
-            {
-                'title': url,
-                'status': ProcessingStatus.TIMEOUT.value,
-                'score': None,
-                'words_count': None,
-            }
-        )
+        title = url
+        status = ProcessingStatus.TIMEOUT.value
+
+    results.append(
+        {
+            'title': title,
+            'status': status,
+            'score': score,
+            'words_count': words_count,
+        }
+    )
 
 
 def print_process_article_results(results):
