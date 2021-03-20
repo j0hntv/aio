@@ -4,12 +4,14 @@ from enum import Enum
 import aiohttp
 import pymorphy2
 from anyio import create_task_group, run
+from async_timeout import timeout
 
 from adapters import SANITIZERS, ArticleNotFound
 from text_tools import split_by_words, calculate_jaundice_rate
 from utils import get_words_list, get_article_title
 
 
+FETCH_TIMEOUT = 1
 TEST_ARTICLES = [
     'https://example.com',
     'https://lenta.ru/articles/2021/03/20/led/',
@@ -27,12 +29,14 @@ class ProcessingStatus(Enum):
     OK = 'OK'
     FETCH_ERROR = 'FETCH_ERROR'
     PARSING_ERROR = 'PARSING_ERROR'
+    TIMEOUT = 'TIMEOUT'
 
 
 async def fetch(session, url):
-    async with session.get(url) as response:
-        response.raise_for_status()
-        return await response.text()
+    async with timeout(FETCH_TIMEOUT) as cm:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.text()
 
 
 async def process_article(session, url, morph, charged_words, results):
@@ -72,6 +76,15 @@ async def process_article(session, url, morph, charged_words, results):
             {
                 'title': 'URL not exist',
                 'status': ProcessingStatus.FETCH_ERROR.value,
+                'score': None,
+                'words_count': None,
+            }
+        )
+    except asyncio.exceptions.TimeoutError:
+        results.append(
+            {
+                'title': url,
+                'status': ProcessingStatus.TIMEOUT.value,
                 'score': None,
                 'words_count': None,
             }
