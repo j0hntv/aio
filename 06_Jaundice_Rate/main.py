@@ -1,4 +1,5 @@
 import asyncio
+from enum import Enum
 
 import aiohttp
 import pymorphy2
@@ -10,6 +11,7 @@ from utils import get_words_list, get_article_title
 
 
 TEST_ARTICLES = [
+    'https://inosmi.ru/social/20210319/249367936q.html',
     'https://inosmi.ru/social/20210319/249367936.html',
     'https://inosmi.ru/politic/20210319/249371849.html',
     'https://inosmi.ru/politic/20210319/249368825.html',
@@ -19,6 +21,11 @@ TEST_ARTICLES = [
 ]
 
 
+class ProcessingStatus(Enum):
+    OK = 'OK'
+    FETCH_ERROR = 'FETCH_ERROR'
+
+
 async def fetch(session, url):
     async with session.get(url) as response:
         response.raise_for_status()
@@ -26,30 +33,43 @@ async def fetch(session, url):
 
 
 async def process_article(session, url, morph, charged_words, results):
-    html = await fetch(session, url)
-    title = get_article_title(html)
-
-    sanitizer = SANITIZERS['inosmi_ru']
-    sanitized_text = sanitizer(html, plaintext=True)
-
-    words = split_by_words(morph, sanitized_text)
-    score = calculate_jaundice_rate(words, charged_words)
-
-    words_count = len(words)
+    try:
+        html = await fetch(session, url)
     
-    results.append(
-        {
-            'title': title,
-            'score': score,
-            'words_count': words_count,
-        }
-    )
+        title = get_article_title(html)
+
+        sanitizer = SANITIZERS['inosmi_ru']
+        sanitized_text = sanitizer(html, plaintext=True)
+
+        words = split_by_words(morph, sanitized_text)
+        score = calculate_jaundice_rate(words, charged_words)
+
+        words_count = len(words)
+
+        results.append(
+            {
+                'title': title,
+                'status': ProcessingStatus.OK.value,
+                'score': score,
+                'words_count': words_count,
+            }
+        )
+    except aiohttp.ClientError:
+        results.append(
+            {
+                'title': 'URL not exist',
+                'status': ProcessingStatus.FETCH_ERROR.value,
+                'score': None,
+                'words_count': None,
+            }
+        )
 
 
 def print_process_article_results(results):
     for result in results:
         print()
         print(f'Заголовок: {result["title"]}')
+        print(f'Статус: {result["status"]}')
         print(f'Рейтинг: {result["score"]}')
         print(f'Слов в статье: {result["words_count"]}')
         print('===')
