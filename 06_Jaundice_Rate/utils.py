@@ -9,4 +9,8 @@ def get_words_list(path):
 
 def get_article_title(html):
     soup = BeautifulSoup(html, 'html.parser')
-    return soup.select_one('.article-header__title').text
+    title = soup.select_one('.article-header__title')
+    if title:
+        return title.text
+
+    return soup.title.text if soup.title else None

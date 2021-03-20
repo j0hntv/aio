@@ -5,12 +5,14 @@ import aiohttp
 import pymorphy2
 from anyio import create_task_group, run
 
-from adapters import SANITIZERS
+from adapters import SANITIZERS, ArticleNotFound
 from text_tools import split_by_words, calculate_jaundice_rate
 from utils import get_words_list, get_article_title
 
 
 TEST_ARTICLES = [
+    'https://example.com',
+    'https://lenta.ru/articles/2021/03/20/led/',
     'https://inosmi.ru/social/20210319/249367936q.html',
     'https://inosmi.ru/social/20210319/249367936.html',
     'https://inosmi.ru/politic/20210319/249371849.html',
@@ -24,6 +26,7 @@ TEST_ARTICLES = [
 class ProcessingStatus(Enum):
     OK = 'OK'
     FETCH_ERROR = 'FETCH_ERROR'
+    PARSING_ERROR = 'PARSING_ERROR'
 
 
 async def fetch(session, url):
@@ -35,7 +38,7 @@ async def fetch(session, url):
 async def process_article(session, url, morph, charged_words, results):
     try:
         html = await fetch(session, url)
-    
+
         title = get_article_title(html)
 
         sanitizer = SANITIZERS['inosmi_ru']
@@ -54,6 +57,16 @@ async def process_article(session, url, morph, charged_words, results):
                 'words_count': words_count,
             }
         )
+    except ArticleNotFound:
+        results.append(
+            {
+                'title': title,
+                'status': ProcessingStatus.PARSING_ERROR.value,
+                'score': None,
+                'words_count': None,
+            }
+        )
+
     except aiohttp.ClientError:
         results.append(
             {
