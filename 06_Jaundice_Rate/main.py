@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from enum import Enum
 
 import aiohttp
@@ -8,7 +9,10 @@ from async_timeout import timeout
 
 from adapters import SANITIZERS, ArticleNotFound
 from text_tools import split_by_words, calculate_jaundice_rate
-from utils import get_words_list, get_article_title
+from utils import get_words_list, get_article_title, setup_logger
+
+
+logger = logging.getLogger(__name__)
 
 
 FETCH_TIMEOUT = 1
@@ -90,6 +94,7 @@ def print_process_article_results(results):
 
 
 async def main():
+    setup_logger(logger, debug=True)
     morph = pymorphy2.MorphAnalyzer()
     charged_words = get_words_list('negative_words.txt')
 

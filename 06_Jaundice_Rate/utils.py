@@ -1,3 +1,5 @@
+import logging
+
 from bs4 import BeautifulSoup
 
 
@@ -14,3 +16,11 @@ def get_article_title(html):
         return title.text
 
     return soup.title.text if soup.title else None
+
+
+def setup_logger(logger, fmt='[%(created)d] %(message)s', debug=False):
+    logger.setLevel(logging.DEBUG if debug else logging.ERROR)
+    formatter = logging.Formatter(fmt)
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
