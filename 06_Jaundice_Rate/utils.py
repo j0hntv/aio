@@ -1,4 +1,6 @@
 import logging
+import time
+from contextlib import contextmanager
 
 from bs4 import BeautifulSoup
 
@@ -24,3 +26,12 @@ def setup_logger(logger, fmt='[%(created)d] %(message)s', debug=False):
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+
+
+@contextmanager
+def check_time(logger):
+    start_time = time.monotonic()
+    yield
+    end_time = time.monotonic()
+    result = round(end_time - start_time, 2)
+    logger.info(f'Анализ закончен за {result} сек.')

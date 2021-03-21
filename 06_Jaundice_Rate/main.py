@@ -9,7 +9,7 @@ from async_timeout import timeout
 
 from adapters import SANITIZERS, ArticleNotFound
 from text_tools import split_by_words, calculate_jaundice_rate
-from utils import get_words_list, get_article_title, setup_logger
+from utils import get_words_list, get_article_title, setup_logger, check_time
 
 
 logger = logging.getLogger(__name__)
@@ -55,11 +55,11 @@ async def process_article(session, url, morph, charged_words, results):
         sanitizer = SANITIZERS['inosmi_ru']
         sanitized_text = sanitizer(html, plaintext=True)
 
-        words = split_by_words(morph, sanitized_text)
+        with check_time(logger):
+            words = split_by_words(morph, sanitized_text)
+
         score = calculate_jaundice_rate(words, charged_words)
-
         words_count = len(words)
-
         status = ProcessingStatus.OK.value
 
     except ArticleNotFound:
