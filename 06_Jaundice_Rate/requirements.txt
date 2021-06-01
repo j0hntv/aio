@@ -7,5 +7,3 @@ pytest==5.*
 pymorphy2==0.8
 pymorphy2-dicts==2.*
 DAWG-Python==0.7.*
-anyio==2.2.0
-async-timeout==3.0.1
