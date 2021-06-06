@@ -8,6 +8,11 @@ from .html_tools import remove_buzz_attrs, remove_buzz_tags, remove_all_tags
 
 def sanitize(html, plaintext=False):
     soup = BeautifulSoup(html, 'html.parser')
+
+    article_title = soup.select_one('.article-header__title')
+    if article_title:
+        article_title = article_title.text
+
     articles = soup.select("article.article")
 
     if len(articles) != 1:
@@ -32,7 +37,8 @@ def sanitize(html, plaintext=False):
     else:
         remove_all_tags(article)
         text = article.get_text()
-    return text.strip()
+
+    return article_title, text.strip()
 
 
 def test_sanitize():

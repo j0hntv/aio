@@ -1,5 +1,6 @@
 import asyncio
 import os
+from enum import Enum
 
 import aiohttp
 import pymorphy2
@@ -11,14 +12,11 @@ from text_tools import split_by_words, calculate_jaundice_rate
 
 
 CHARGED_DICT_PATH = 'charged_dict'
-TEST_ARTICLES = [
-    'https://inosmi.ru/politic/20210602/249840920.html',
-    'https://inosmi.ru/social/20210603/249851439.html',
-    'https://inosmi.ru/politic/20210603/249851956.html',
-    'https://inosmi.ru/military/20210603/249853695.html',
-    'https://inosmi.ru/politic/20210603/249852621.html',
-    'https://inosmi.ru/military/20210603/249853929.html',
-]
+
+
+class ProcessingStatus(Enum):
+    OK = 'OK'
+    FETCH_ERROR = 'FETCH_ERROR'
 
 
 def get_charged_words(charged_dict_path):
@@ -30,33 +28,41 @@ def get_charged_words(charged_dict_path):
 
     return words
 
-def get_article_title(html):
-    soup = BeautifulSoup(html, 'html.parser')
-    return soup.select_one('.article-header__title').text
 
-
-async def process_article(session, morph, charged_words, url, results):
-    html = await fetch(session, url)
-    plaintext = sanitize(html, plaintext=True)
-    title = get_article_title(html)
-    splitted_by_words_text = split_by_words(morph, plaintext)
-
-    score = calculate_jaundice_rate(splitted_by_words_text, charged_words)
-    words_count = len(splitted_by_words_text)
-
-    results.append(
-        {
-            'Заголовок': title,
-            'Рейтинг': score,
-            'Слов в статье': words_count,
-        }
-    )
+def get_test_article_urls():
+    with open('test_article_urls.txt') as file:
+        return file.read().split('\n')
 
 
 async def fetch(session, url):
     async with session.get(url) as response:
         response.raise_for_status()
         return await response.text()
+
+
+async def process_article(session, morph, charged_words, url, results):
+    try:
+        html = await fetch(session, url)
+        status = ProcessingStatus.OK.value
+        title, plaintext = sanitize(html, plaintext=True)
+        splitted_by_words_text = split_by_words(morph, plaintext)
+        score = calculate_jaundice_rate(splitted_by_words_text, charged_words)
+        words_count = len(splitted_by_words_text)
+
+    except aiohttp.ClientError:
+        status = ProcessingStatus.FETCH_ERROR.value
+        title = 'URL not exist'
+        score = None
+        words_count = None
+
+    results.append(
+        {
+            'title': title,
+            'status': status,
+            'score': score,
+            'words_count': words_count,
+        }
+    )
 
 
 async def main():
@@ -67,7 +73,7 @@ async def main():
 
     async with aiohttp.ClientSession() as session:
         async with create_task_group() as task_group:
-            for url in TEST_ARTICLES:
+            for url in get_test_article_urls():
                 await task_group.spawn(
                     process_article,
                     session,
@@ -78,9 +84,10 @@ async def main():
                 )
 
     for result in process_article_results:
-        for key, value in result.items():
-            print(f'{key}: {value}')
-
+        print(f'Заголовок: {result.get("title")}')
+        print(f'Статус: {result.get("status")}')
+        print(f'Рейтинг: {result.get("score")}')
+        print(f'Слов в статье: {result.get("words_count")}')
         print('=====')
 
 
