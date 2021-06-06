@@ -8,6 +8,7 @@ from anyio import create_task_group, run
 from bs4 import BeautifulSoup
 
 from adapters.inosmi_ru import sanitize
+from adapters.exceptions import ArticleNotFound
 from text_tools import split_by_words, calculate_jaundice_rate
 
 
@@ -17,6 +18,10 @@ CHARGED_DICT_PATH = 'charged_dict'
 class ProcessingStatus(Enum):
     OK = 'OK'
     FETCH_ERROR = 'FETCH_ERROR'
+    PARSING_ERROR = 'PARSING_ERROR'
+
+    def __str__(self):
+        return self.value
 
 
 def get_charged_words(charged_dict_path):
@@ -34,6 +39,13 @@ def get_test_article_urls():
         return file.read().split('\n')
 
 
+def get_title_from_html(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    title = soup.find('title')
+
+    return title.text if title else ''
+
+
 async def fetch(session, url):
     async with session.get(url) as response:
         response.raise_for_status()
@@ -41,19 +53,22 @@ async def fetch(session, url):
 
 
 async def process_article(session, morph, charged_words, url, results):
+    score, words_count = None, None
     try:
         html = await fetch(session, url)
-        status = ProcessingStatus.OK.value
+        status = ProcessingStatus.OK
         title, plaintext = sanitize(html, plaintext=True)
         splitted_by_words_text = split_by_words(morph, plaintext)
         score = calculate_jaundice_rate(splitted_by_words_text, charged_words)
         words_count = len(splitted_by_words_text)
 
     except aiohttp.ClientError:
-        status = ProcessingStatus.FETCH_ERROR.value
+        status = ProcessingStatus.FETCH_ERROR
         title = 'URL not exist'
-        score = None
-        words_count = None
+
+    except ArticleNotFound:
+        status = ProcessingStatus.PARSING_ERROR
+        title = get_title_from_html(html)
 
     results.append(
         {
