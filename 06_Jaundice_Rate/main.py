@@ -1,6 +1,9 @@
 import asyncio
+import logging
 import os
+from contextlib import contextmanager
 from enum import Enum
+from time import monotonic
 
 import aiohttp
 from async_timeout import timeout
@@ -15,6 +18,8 @@ from text_tools import split_by_words, calculate_jaundice_rate
 
 CHARGED_DICT_PATH = 'charged_dict'
 TIMEOUT = 1
+
+logger = logging.getLogger('jaundice_rate')
 
 
 class ProcessingStatus(Enum):
@@ -49,6 +54,14 @@ def get_title_from_html(html):
     return title.text if title else ''
 
 
+@contextmanager
+def time_it():
+    start_time = monotonic()
+    yield
+    end_time = monotonic()
+    logger.info(f'Анализ закончен за {end_time - start_time:.2f} сек')
+
+
 async def fetch(session, url):
     async with timeout(TIMEOUT):
         async with session.get(url) as response:
@@ -61,10 +74,11 @@ async def process_article(session, morph, charged_words, url, results):
     try:
         html = await fetch(session, url)
         status = ProcessingStatus.OK
-        title, plaintext = sanitize(html, plaintext=True)
-        splitted_by_words_text = split_by_words(morph, plaintext)
-        score = calculate_jaundice_rate(splitted_by_words_text, charged_words)
-        words_count = len(splitted_by_words_text)
+        with time_it():
+            title, plaintext = sanitize(html, plaintext=True)
+            splitted_by_words_text = split_by_words(morph, plaintext)
+            score = calculate_jaundice_rate(splitted_by_words_text, charged_words)
+            words_count = len(splitted_by_words_text)
 
     except aiohttp.ClientError:
         status = ProcessingStatus.FETCH_ERROR
@@ -89,6 +103,8 @@ async def process_article(session, morph, charged_words, url, results):
 
 
 async def main():
+    logging.basicConfig(level=logging.INFO)
+
     url = 'https://inosmi.ru/politic/20210602/249840920.html'
     morph = pymorphy2.MorphAnalyzer()
     charged_words = get_charged_words(CHARGED_DICT_PATH)
