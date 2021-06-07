@@ -3,6 +3,7 @@ import os
 from enum import Enum
 
 import aiohttp
+from async_timeout import timeout
 import pymorphy2
 from anyio import create_task_group, run
 from bs4 import BeautifulSoup
@@ -13,12 +14,14 @@ from text_tools import split_by_words, calculate_jaundice_rate
 
 
 CHARGED_DICT_PATH = 'charged_dict'
+TIMEOUT = 1
 
 
 class ProcessingStatus(Enum):
     OK = 'OK'
-    FETCH_ERROR = 'FETCH_ERROR'
-    PARSING_ERROR = 'PARSING_ERROR'
+    FETCH_ERROR = 'FETCH ERROR'
+    PARSING_ERROR = 'PARSING ERROR'
+    TIMEOUT = 'TIMEOUT'
 
     def __str__(self):
         return self.value
@@ -47,9 +50,10 @@ def get_title_from_html(html):
 
 
 async def fetch(session, url):
-    async with session.get(url) as response:
-        response.raise_for_status()
-        return await response.text()
+    async with timeout(TIMEOUT):
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.text()
 
 
 async def process_article(session, morph, charged_words, url, results):
@@ -69,6 +73,10 @@ async def process_article(session, morph, charged_words, url, results):
     except ArticleNotFound:
         status = ProcessingStatus.PARSING_ERROR
         title = get_title_from_html(html)
+
+    except asyncio.TimeoutError:
+        status =ProcessingStatus.TIMEOUT
+        title = None
 
     results.append(
         {
