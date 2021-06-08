@@ -17,7 +17,7 @@ from text_tools import split_by_words, calculate_jaundice_rate
 
 
 CHARGED_DICT_PATH = 'charged_dict'
-TIMEOUT = 1
+TIMEOUT = 3
 
 logger = logging.getLogger('jaundice_rate')
 
@@ -76,7 +76,7 @@ async def process_article(session, morph, charged_words, url, results):
         status = ProcessingStatus.OK
         with time_it():
             title, plaintext = sanitize(html, plaintext=True)
-            splitted_by_words_text = split_by_words(morph, plaintext)
+            splitted_by_words_text = await split_by_words(morph, plaintext)
             score = calculate_jaundice_rate(splitted_by_words_text, charged_words)
             words_count = len(splitted_by_words_text)
 
