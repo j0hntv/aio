@@ -8,7 +8,7 @@ from time import monotonic
 import aiohttp
 from async_timeout import timeout
 import pymorphy2
-from anyio import create_task_group, run
+from anyio import create_task_group
 from bs4 import BeautifulSoup
 
 from adapters.inosmi_ru import sanitize
@@ -42,16 +42,11 @@ def get_charged_words(charged_dict_path):
     return words
 
 
-def get_test_article_urls():
-    with open('test_article_urls.txt') as file:
-        return file.read().split('\n')
-
-
 def get_title_from_html(html):
     soup = BeautifulSoup(html, 'html.parser')
     title = soup.find('title')
 
-    return title.text if title else ''
+    return title.text if title else 'Unknown page title'
 
 
 @contextmanager
@@ -73,7 +68,7 @@ async def process_article(session, morph, charged_words, url, results):
     score, words_count = None, None
     try:
         html = await fetch(session, url)
-        status = ProcessingStatus.OK
+        status = str(ProcessingStatus.OK)
         with time_it():
             title, plaintext = sanitize(html, plaintext=True)
             splitted_by_words_text = await split_by_words(morph, plaintext)
@@ -81,15 +76,15 @@ async def process_article(session, morph, charged_words, url, results):
             words_count = len(splitted_by_words_text)
 
     except aiohttp.ClientError:
-        status = ProcessingStatus.FETCH_ERROR
+        status = str(ProcessingStatus.FETCH_ERROR)
         title = 'URL not exist'
 
     except ArticleNotFound:
-        status = ProcessingStatus.PARSING_ERROR
+        status = str(ProcessingStatus.PARSING_ERROR)
         title = get_title_from_html(html)
 
     except asyncio.TimeoutError:
-        status =ProcessingStatus.TIMEOUT
+        status = str(ProcessingStatus.TIMEOUT)
         title = None
 
     results.append(
@@ -102,33 +97,20 @@ async def process_article(session, morph, charged_words, url, results):
     )
 
 
-async def main():
+async def get_process_article_results(urls, morph, charged_words, results):
     logging.basicConfig(level=logging.INFO)
 
-    url = 'https://inosmi.ru/politic/20210602/249840920.html'
     morph = pymorphy2.MorphAnalyzer()
     charged_words = get_charged_words(CHARGED_DICT_PATH)
-    process_article_results = []
 
     async with aiohttp.ClientSession() as session:
         async with create_task_group() as task_group:
-            for url in get_test_article_urls():
+            for url in urls:
                 await task_group.spawn(
                     process_article,
                     session,
                     morph,
                     charged_words,
                     url,
-                    process_article_results
+                    results
                 )
-
-    for result in process_article_results:
-        print(f'Заголовок: {result.get("title")}')
-        print(f'Статус: {result.get("status")}')
-        print(f'Рейтинг: {result.get("score")}')
-        print(f'Слов в статье: {result.get("words_count")}')
-        print('=====')
-
-
-if __name__ == '__main__':
-    run(main)
