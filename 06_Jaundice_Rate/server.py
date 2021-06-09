@@ -1,4 +1,6 @@
 import json
+import logging
+from environs import Env
 from functools import partial
 
 import pymorphy2
@@ -10,25 +12,44 @@ from article_tools import (
     get_process_article_results
 )
 
+
 CHARGED_DICT_PATH = 'charged_dict'
-TIMEOUT = 3
 
 
-async def handle_article(request, morph, charged_words, json_encoder):
+def get_urls(request, max_urls_in_request):
     urls = request.query.get('urls')
-
     if not urls:
-        return web.json_response({'error': 'No url specified'}, dumps=json_encoder, status=400)
+        message = 'No url specified'
+        response = json.dumps({'error': message})
+        raise web.HTTPBadRequest(text=response)
     
     urls = urls.split(',')
-    process_article_results = []
+    if len(urls) > max_urls_in_request:
+        message = f'Too many urls in request, should be {max_urls_in_request} or less'
+        response = json.dumps({'error': message})
+        raise web.HTTPBadRequest(text=response)
 
-    await get_process_article_results(urls, morph, charged_words, process_article_results)
+    return urls
 
-    return web.json_response({'result': process_article_results}, dumps=json_encoder)
+
+async def handle_articles(request, morph, charged_words, json_encoder, max_urls_in_request, http_timeout):
+    urls = get_urls(request, max_urls_in_request)
+    article_results = await get_process_article_results(urls, morph, charged_words, http_timeout)
+
+    return web.json_response({'result': article_results}, dumps=json_encoder)
 
 
 def main():
+    env = Env()
+    env.read_env()
+    
+    max_urls_in_request = env.int('MAX_URLS_IN_REQUEST', 10)
+    http_timeout = env.int('HTTP_TIMEOUT', 3)
+    debug = env.bool('DEBUG', False)
+
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+
     morph = pymorphy2.MorphAnalyzer()
     charged_words = get_charged_words(CHARGED_DICT_PATH)
 
@@ -38,10 +59,12 @@ def main():
         indent=4,
     )
     handle = partial(
-        handle_article,
+        handle_articles,
         morph=morph,
         charged_words=charged_words,
-        json_encoder=json_encoder
+        json_encoder=json_encoder,
+        max_urls_in_request=max_urls_in_request,
+        http_timeout=http_timeout
     )
 
     app = web.Application()

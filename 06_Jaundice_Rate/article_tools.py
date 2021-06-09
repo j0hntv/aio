@@ -16,9 +16,6 @@ from adapters.exceptions import ArticleNotFound
 from text_tools import split_by_words, calculate_jaundice_rate
 
 
-CHARGED_DICT_PATH = 'charged_dict'
-TIMEOUT = 3
-
 logger = logging.getLogger('jaundice_rate')
 
 
@@ -54,20 +51,20 @@ def time_it():
     start_time = monotonic()
     yield
     end_time = monotonic()
-    logger.info(f'Анализ закончен за {end_time - start_time:.2f} сек')
+    logger.debug(f'Анализ закончен за {end_time - start_time:.2f} сек')
 
 
-async def fetch(session, url):
-    async with timeout(TIMEOUT):
+async def fetch(session, url, http_timeout):
+    async with timeout(http_timeout):
         async with session.get(url) as response:
             response.raise_for_status()
             return await response.text()
 
 
-async def process_article(session, morph, charged_words, url, results):
+async def process_article(session, morph, charged_words, url, http_timeout, results):
     score, words_count = None, None
     try:
-        html = await fetch(session, url)
+        html = await fetch(session, url, http_timeout)
         status = str(ProcessingStatus.OK)
         with time_it():
             title, plaintext = sanitize(html, plaintext=True)
@@ -97,12 +94,8 @@ async def process_article(session, morph, charged_words, url, results):
     )
 
 
-async def get_process_article_results(urls, morph, charged_words, results):
-    logging.basicConfig(level=logging.INFO)
-
-    morph = pymorphy2.MorphAnalyzer()
-    charged_words = get_charged_words(CHARGED_DICT_PATH)
-
+async def get_process_article_results(urls, morph, charged_words, http_timeout):
+    process_article_results = []
     async with aiohttp.ClientSession() as session:
         async with create_task_group() as task_group:
             for url in urls:
@@ -112,5 +105,7 @@ async def get_process_article_results(urls, morph, charged_words, results):
                     morph,
                     charged_words,
                     url,
-                    results
+                    http_timeout,
+                    process_article_results
                 )
+    return process_article_results
