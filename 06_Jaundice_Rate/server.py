@@ -5,7 +5,6 @@ from functools import partial
 
 import pymorphy2
 from aiohttp import web
-from anyio import create_task_group
 
 from article_tools import (
     get_charged_words,
@@ -22,7 +21,7 @@ def get_urls(request, max_urls_in_request):
         message = 'No url specified'
         response = json.dumps({'error': message})
         raise web.HTTPBadRequest(text=response)
-    
+
     urls = urls.split(',')
     if len(urls) > max_urls_in_request:
         message = f'Too many urls in request, should be {max_urls_in_request} or less'
