@@ -7,3 +7,4 @@
 - [03. А скинешь фоточки?](https://github.com/j0hntv/aio/tree/master/03_Download_Photos)
 - [04. Подключаемся к подпольному чату](https://github.com/j0hntv/aio/tree/master/04_Underground_Chat_CLI)
 - [05. Помогаем клубу анонимных геймеров](https://github.com/j0hntv/aio/tree/master/05_Anonymous_Chat_Client)
+- [06. Фильтруем Интернет со скоростью света](https://github.com/j0hntv/aio/tree/master/06_Jaundice_Rate)
