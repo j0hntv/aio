@@ -29,6 +29,13 @@ pip install -r requirements.txt
 ```
 python server.py
 ```
+# Как запустить с помощью Docker
+```
+docker build -t jaundice_rate .
+```
+```
+docker run -d -p 8080:8080 jaundice_rate
+```
 # Как пользоваться:
 Открыть в браузере:
 ```
