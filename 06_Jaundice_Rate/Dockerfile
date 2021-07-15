@@ -1,9 +1,11 @@
 FROM python:3.8
 
-WORKDIR /opt/jaundice_rate
+COPY requirements.txt /opt/jaundice_rate/requirements.txt
 
-COPY . .
+RUN pip install --upgrade pip && pip install -r /opt/jaundice_rate/requirements.txt
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY app/ /opt/jaundice_rate/app/
+
+WORKDIR /opt/jaundice_rate/app/
 
 CMD [ "python", "./server.py" ]
