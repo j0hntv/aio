@@ -31,9 +31,9 @@ def get_urls(request, max_urls_in_request):
     return urls
 
 
-async def handle_articles(request, morph, charged_words, json_encoder, max_urls_in_request, http_timeout):
+async def handle_articles(request, morph, charged_words, json_encoder, max_urls_in_request, max_timeout):
     urls = get_urls(request, max_urls_in_request)
-    article_results = await get_process_article_results(urls, morph, charged_words, http_timeout)
+    article_results = await get_process_article_results(urls, morph, charged_words, max_timeout)
 
     return web.json_response({'result': article_results}, dumps=json_encoder)
 
@@ -43,7 +43,7 @@ def main():
     env.read_env()
     
     max_urls_in_request = env.int('MAX_URLS_IN_REQUEST', 10)
-    http_timeout = env.int('HTTP_TIMEOUT', 3)
+    max_timeout = env.int('MAX_TIMEOUT', 3)
     debug = env.bool('DEBUG', False)
 
     if debug:
@@ -63,7 +63,7 @@ def main():
         charged_words=charged_words,
         json_encoder=json_encoder,
         max_urls_in_request=max_urls_in_request,
-        http_timeout=http_timeout
+        max_timeout=max_timeout
     )
 
     app = web.Application()

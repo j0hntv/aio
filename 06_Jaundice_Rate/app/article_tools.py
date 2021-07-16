@@ -54,23 +54,23 @@ def time_it():
     logger.debug(f'Анализ закончен за {end_time - start_time:.2f} сек')
 
 
-async def fetch(session, url, http_timeout):
-    async with timeout(http_timeout):
-        async with session.get(url) as response:
-            response.raise_for_status()
-            return await response.text()
+async def fetch(session, url):
+    async with session.get(url) as response:
+        response.raise_for_status()
+        return await response.text()
 
 
-async def process_article(session, morph, charged_words, url, http_timeout, results):
+async def process_article(session, morph, charged_words, url, max_timeout, results):
     score, words_count = None, None
     try:
-        html = await fetch(session, url, http_timeout)
-        status = str(ProcessingStatus.OK)
-        with time_it():
-            title, plaintext = sanitize(html, plaintext=True)
-            splitted_by_words_text = await split_by_words(morph, plaintext)
-            score = calculate_jaundice_rate(splitted_by_words_text, charged_words)
-            words_count = len(splitted_by_words_text)
+        async with timeout(max_timeout):
+            html = await fetch(session, url)
+            status = str(ProcessingStatus.OK)
+            with time_it():
+                title, plaintext = sanitize(html, plaintext=True)
+                splitted_by_words_text = await split_by_words(morph, plaintext)
+                score = calculate_jaundice_rate(splitted_by_words_text, charged_words)
+                words_count = len(splitted_by_words_text)
 
     except aiohttp.ClientError:
         status = str(ProcessingStatus.FETCH_ERROR)
@@ -86,16 +86,16 @@ async def process_article(session, morph, charged_words, url, http_timeout, resu
 
     results.append(
         {
+            'status': status,
             'url': url,
             'title': title,
-            'status': status,
             'score': score,
             'words_count': words_count,
         }
     )
 
 
-async def get_process_article_results(urls, morph, charged_words, http_timeout):
+async def get_process_article_results(urls, morph, charged_words, max_timeout):
     process_article_results = []
     async with aiohttp.ClientSession() as session:
         async with create_task_group() as task_group:
@@ -106,35 +106,35 @@ async def get_process_article_results(urls, morph, charged_words, http_timeout):
                     morph,
                     charged_words,
                     url,
-                    http_timeout,
+                    max_timeout,
                     process_article_results
                 )
     return process_article_results
 
 
-async def run_process_article(url, status, http_timeout):
+async def run_process_article(url, status, max_timeout):
     morph = pymorphy2.MorphAnalyzer()
     charged_words = get_charged_words('charged_dict')
     results = []
 
     async with aiohttp.ClientSession() as session:
-        await process_article(session, morph, charged_words, url, http_timeout, results)
+        await process_article(session, morph, charged_words, url, max_timeout, results)
         assert results[0]['status'] == status
 
 
 def test_process_article_timeout():
     url = 'http://inosmi.ru/politic/20210602/249840920.html'
     status = 'TIMEOUT'
-    asyncio.run(run_process_article(url, status, http_timeout=0))
+    asyncio.run(run_process_article(url, status, max_timeout=0))
 
 
 def test_process_article_parsing_error():
     url = 'https://example.com/'
     status = 'PARSING ERROR'
-    asyncio.run(run_process_article(url, status, http_timeout=5))
+    asyncio.run(run_process_article(url, status, max_timeout=5))
 
 
 def test_process_article_fetch_error():
     url = 'https://xxx-yyy.zzz/'
     status = 'FETCH ERROR'
-    asyncio.run(run_process_article(url, status, http_timeout=5))
+    asyncio.run(run_process_article(url, status, max_timeout=5))
