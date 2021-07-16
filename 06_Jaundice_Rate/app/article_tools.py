@@ -86,6 +86,7 @@ async def process_article(session, morph, charged_words, url, http_timeout, resu
 
     results.append(
         {
+            'url': url,
             'title': title,
             'status': status,
             'score': score,
