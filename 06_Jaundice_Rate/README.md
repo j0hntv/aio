@@ -20,13 +20,14 @@ pip install -r requirements.txt
 
 `MAX_URLS_IN_REQUEST` - максимальное количество url, которое можно передать GET-параметру, по умолчанию - 10
 
-`HTTP_TIMEOUT` - Сколько ждать ответа от новостного сайта, по умолчанию - 3 (секунды)
+`MAX_TIMEOUT` - Сколько ждать ответа, по умолчанию - 3 (секунды)
 
 `DEBUG` - Показывать в консоли время, затраченное на анализ статьи, по умолчанию - False
 
 # Как запустить
 
 ```
+cd app/
 python server.py
 ```
 # Как запустить с помощью Docker
@@ -39,29 +40,32 @@ docker run -d -p 8080:8080 jaundice_rate
 # Как пользоваться:
 Открыть в браузере:
 ```
-http://0.0.0.0:8080/?urls=http://example.com,http://another-example.com,https://inosmi.ru/science/20210609/249881819.html
+http://0.0.0.0:8080/?urls=https://python.org,http://some-example.com,https://inosmi.ru/science/20210609/249881819.html
 ```
 Результат:
 ```
 {
     "result": [
         {
-            "title": "URL not exist",
             "status": "FETCH ERROR",
+            "url": "http://some-example.com",
+            "title": "URL not exist",
             "score": null,
             "words_count": null
         },
         {
-            "title": "Example Domain",
-            "status": "PARSING ERROR",
-            "score": null,
-            "words_count": null
-        },
-        {
-            "title": "Science (США): как возникло и как исчезло крупнейшее в мире озеро",
             "status": "OK",
-            "score": 1.99,
-            "words_count": 553
+            "url": "https://inosmi.ru/science/20210609/249881819.html",
+            "title": "Science (США): как возникло и как исчезло крупнейшее в мире озеро",
+            "score": 1.97,
+            "words_count": 558
+        },
+        {
+            "status": "PARSING ERROR",
+            "url": "https://python.org",
+            "title": "Welcome to Python.org",
+            "score": null,
+            "words_count": null
         }
     ]
 }
@@ -72,12 +76,9 @@ http://0.0.0.0:8080/?urls=http://example.com,http://another-example.com,https://
 Для тестирования используется [pytest](https://docs.pytest.org/en/latest/), тестами покрыты фрагменты кода сложные в отладке: text_tools.py и адаптеры. Команды для запуска тестов:
 
 ```
+cd app/
 python -m pytest adapters/inosmi_ru.py
-```
-```
 python -m pytest text_tools.py
-```
-```
 python -m pytest article_tools.py
 ```
 
