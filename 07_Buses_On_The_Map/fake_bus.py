@@ -4,19 +4,27 @@ import sys
 import trio
 from trio_websocket import open_websocket_url
 
-from bus import get_bus_coordinates
+from utils.load_routes import load_routes
+
+
+DELAY = 1
+URL = 'ws://127.0.0.1:8080'
+
+
+async def run_bus(url, bus_id, route):
+    async with open_websocket_url(url) as ws:
+        for coordinates in route:
+            lat, lng = coordinates
+            message = {'busId': bus_id, 'lat': lat, 'lng': lng, 'route': bus_id}
+            await ws.send_message(json.dumps(message, ensure_ascii=False))
+            await trio.sleep(DELAY)
 
 
 async def main():
-    coordinates = get_bus_coordinates('156.json')
-
     try:
-        async with open_websocket_url('ws://127.0.0.1:8080') as ws:
-            for coordinate in coordinates:
-                lat, lng = coordinate
-                message = {"busId": "156-0", "lat": lat, "lng": lng, "route": "156"}
-                await ws.send_message(json.dumps(message))
-                await trio.sleep(0.5)
+        async with trio.open_nursery() as nursery:
+            for route in load_routes():
+                nursery.start_soon(run_bus, URL, route['name'], route['coordinates'])
 
     except OSError as ose:
         print(f'Connection attempt failed: {ose}', file=sys.stderr)
