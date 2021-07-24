@@ -5,6 +5,7 @@ import trio
 from trio_websocket import serve_websocket, ConnectionClosed
 
 
+DELAY = 0.1
 buses = {}
 
 
@@ -30,7 +31,7 @@ async def talk_to_browser(request):
                 "buses": list(buses.values())
             }
             await ws.send_message(json.dumps(message, ensure_ascii=False))
-            await trio.sleep(0.1)
+            await trio.sleep(DELAY)
         except ConnectionClosed:
             break
 
