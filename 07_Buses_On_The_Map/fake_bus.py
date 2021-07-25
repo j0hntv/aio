@@ -1,7 +1,9 @@
 import json
+import logging
 import random
 import sys
 
+import asyncclick as click
 import trio
 from trio_websocket import open_websocket_url, ConnectionClosed
 
@@ -9,19 +11,14 @@ from utils.decorators import suppress
 from utils.routes import load_routes
 
 
-URL = 'ws://127.0.0.1:8080'
-DELAY = 1
-MIN_ROUTE_BUSES = 1
-MAX_ROUTE_BUSES = 5
-MAX_CHANNELS = 5
-MAX_BUFFER_SIZE = 0
+def generate_bus_id(emulator_id, route_id, bus_index):
+    bus_id = f'{route_id}-{bus_index}'
+    if emulator_id:
+        bus_id = f'{emulator_id}-{bus_id}'
+    return bus_id
 
 
-def generate_bus_id(route_id, bus_index):
-    return f'{route_id}-{bus_index}'
-
-
-async def run_bus(send_channel, bus_id, route, start_offset):
+async def run_bus(send_channel, bus_id, route, start_offset, refresh_timeout):
     async with send_channel:
         route = route[start_offset:] + route[:start_offset]
         while True:
@@ -29,7 +26,7 @@ async def run_bus(send_channel, bus_id, route, start_offset):
                 lat, lng = coordinates
                 message = {'busId': bus_id, 'lat': lat, 'lng': lng, 'route': bus_id}
                 await send_channel.send(json.dumps(message, ensure_ascii=False))
-                await trio.sleep(DELAY)
+                await trio.sleep(refresh_timeout)
 
 
 async def send_updates(server_address, receive_channel):
@@ -39,24 +36,85 @@ async def send_updates(server_address, receive_channel):
                 await ws.send_message(message)
 
 
+@click.command()
+@click.option(
+    '--server',
+    default='ws://127.0.0.1:8080',
+    help='Адрес сервера',
+)
+@click.option(
+    '--routes-number',
+    default=-1,
+    help='Количество маршрутов',
+)
+@click.option(
+    '--buses-per-route',
+    default=1,
+    help='Количество автобусов на каждом маршруте',
+)
+@click.option(
+    '--websockets-number',
+    default=5,
+    help='Количество открытых веб-сокетов',
+)
+@click.option(
+    '--emulator-id',
+    default='',
+    help='Префикс к busId на случай запуска нескольких экземпляров имитатора',
+)
+@click.option(
+    '--refresh-timeout',
+    default=1,
+    help='Задержка в обновлении координат сервера',
+)
+@click.option(
+    '--buffer-size',
+    default=0,
+    help='The maximum number of items that can be buffered in the channel before send() blocks',
+)
+@click.option(
+    '--directory-path',
+    default='routes',
+    help='Путь к файлам с маршрутами',
+)
+@click.option(
+    '-v',
+    is_flag=True,
+    help='Настройка логирования',
+)
 @suppress(KeyboardInterrupt, ConnectionClosed)
-async def main():
+async def main(
+    server, routes_number, buses_per_route, websockets_number,
+    emulator_id, refresh_timeout, buffer_size, directory_path, v
+):
+
+    if v:
+        logging.basicConfig(level=logging.DEBUG)
+
     try:
         async with trio.open_nursery() as nursery:
-            channels = [trio.open_memory_channel(MAX_BUFFER_SIZE) for _ in range(MAX_CHANNELS)]
-            for bus_index in range(MIN_ROUTE_BUSES, MAX_ROUTE_BUSES):
-                for route in load_routes():
-                    send_channel = random.choice(channels)[0]
-                    bus_id = generate_bus_id(route['name'], bus_index)
-                    start_offset = random.randrange(len(route['coordinates']))
-                    nursery.start_soon(run_bus, send_channel, bus_id, route['coordinates'], start_offset)
+            channels = [trio.open_memory_channel(buffer_size) for _ in range(websockets_number)]
+            for channel in channels:
+                receive_channel = channel[1]
+                nursery.start_soon(send_updates, server, receive_channel)
 
-                receive_channel = random.choice(channels)[1]
-                nursery.start_soon(send_updates, URL, receive_channel)
+            for route in load_routes(directory_path, routes_number):
+                for bus_index in range(buses_per_route):
+                    send_channel = random.choice(channels)[0]
+                    bus_id = generate_bus_id(emulator_id, route['name'], bus_index)
+                    start_offset = random.randrange(len(route['coordinates']))
+                    nursery.start_soon(
+                        run_bus,
+                        send_channel,
+                        bus_id,
+                        route['coordinates'],
+                        start_offset,
+                        refresh_timeout
+                    )
 
     except OSError as ose:
         print(f'Connection attempt failed: {ose}', file=sys.stderr)
 
 
 if __name__ == '__main__':
-    trio.run(main)
+    main(_anyio_backend="trio")
