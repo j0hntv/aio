@@ -5,7 +5,9 @@ import trio
 from trio_websocket import serve_websocket, ConnectionClosed
 
 
-DELAY = 0.1
+DELAY = 1
+FETCH_SOCKET = ('127.0.0.1', 8080)
+SEND_SOCKET = ('127.0.0.1', 8000)
 buses = {}
 
 
@@ -38,8 +40,8 @@ async def talk_to_browser(request):
 
 async def main():
     async with trio.open_nursery() as nursery:
-        nursery.start_soon(partial(serve_websocket, fetch_coordinates, '127.0.0.1', 8080, ssl_context=None))
-        nursery.start_soon(partial(serve_websocket, talk_to_browser, '127.0.0.1', 8000, ssl_context=None))
+        nursery.start_soon(partial(serve_websocket, fetch_coordinates, *FETCH_SOCKET, ssl_context=None))
+        nursery.start_soon(partial(serve_websocket, talk_to_browser, *SEND_SOCKET, ssl_context=None))
 
 
 if __name__ == '__main__':
