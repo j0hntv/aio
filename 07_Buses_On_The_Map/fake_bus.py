@@ -5,10 +5,14 @@ import sys
 
 import asyncclick as click
 import trio
-from trio_websocket import open_websocket_url, ConnectionClosed
+from trio_websocket import open_websocket_url
 
-from utils.decorators import suppress
+from utils.decorators import suppress, relaunch_on_disconnect
 from utils.routes import load_routes
+
+
+RELAUNCH_DELAY = 3
+logger = logging.getLogger('fake_bus')
 
 
 def generate_bus_id(emulator_id, route_id, bus_index):
@@ -29,8 +33,9 @@ async def run_bus(send_channel, bus_id, route, start_offset, refresh_timeout):
                 await trio.sleep(refresh_timeout)
 
 
+@relaunch_on_disconnect(logger=logger, delay=RELAUNCH_DELAY)
 async def send_updates(server_address, receive_channel):
-    async with open_websocket_url(server_address) as ws:
+    async with open_websocket_url(server_address, ssl_context=None) as ws:
         async with receive_channel:
             async for message in receive_channel:
                 await ws.send_message(message)
@@ -82,7 +87,7 @@ async def send_updates(server_address, receive_channel):
     is_flag=True,
     help='Настройка логирования',
 )
-@suppress(KeyboardInterrupt, ConnectionClosed)
+@suppress(KeyboardInterrupt)
 async def main(
     server, routes_number, buses_per_route, websockets_number,
     emulator_id, refresh_timeout, buffer_size, directory_path, v
