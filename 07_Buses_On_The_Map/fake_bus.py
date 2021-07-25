@@ -5,7 +5,8 @@ import sys
 import trio
 from trio_websocket import open_websocket_url, ConnectionClosed
 
-from utils.load_routes import load_routes
+from utils.decorators import suppress
+from utils.routes import load_routes
 
 
 URL = 'ws://127.0.0.1:8080'
@@ -38,6 +39,7 @@ async def send_updates(server_address, receive_channel):
                 await ws.send_message(message)
 
 
+@suppress(KeyboardInterrupt, ConnectionClosed)
 async def main():
     try:
         async with trio.open_nursery() as nursery:
@@ -54,9 +56,6 @@ async def main():
 
     except OSError as ose:
         print(f'Connection attempt failed: {ose}', file=sys.stderr)
-
-    except (KeyboardInterrupt, ConnectionClosed):
-        sys.exit()
 
 
 if __name__ == '__main__':

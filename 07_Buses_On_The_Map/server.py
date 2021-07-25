@@ -1,8 +1,10 @@
-from functools import partial
 import json
+from functools import partial
 
 import trio
 from trio_websocket import serve_websocket, ConnectionClosed
+
+from utils.decorators import suppress
 
 
 DELAY = 1
@@ -38,6 +40,7 @@ async def talk_to_browser(request):
             break
 
 
+@suppress(KeyboardInterrupt)
 async def main():
     async with trio.open_nursery() as nursery:
         nursery.start_soon(partial(serve_websocket, fetch_coordinates, *FETCH_SOCKET, ssl_context=None))
