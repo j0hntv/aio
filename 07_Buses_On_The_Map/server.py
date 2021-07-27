@@ -12,6 +12,7 @@ DELAY = 1
 FETCH_SOCKET = ('127.0.0.1', 8080)
 SEND_SOCKET = ('127.0.0.1', 8000)
 buses = {}
+bounds = {}
 logger = logging.getLogger('server')
 
 
@@ -33,25 +34,30 @@ async def fetch_coordinates(request):
             break
 
 
+async def send_buses(ws):
+    buses_inside = [bus for bus in buses.values() if is_inside(bounds, bus['lat'], bus['lng'])]
+    logger.debug(f'{len(buses_inside)} buses inside bounds')
+    message = {
+        "msgType": "Buses",
+        "buses": buses_inside
+    }
+    await ws.send_message(json.dumps(message, ensure_ascii=False))
+
+
 @suppress(ConnectionClosed)
 async def talk_to_browser(ws):
     while True:
-        message = {
-            "msgType": "Buses",
-            "buses": list(buses.values())
-        }
-        await ws.send_message(json.dumps(message, ensure_ascii=False))
+        await send_buses(ws)
         await trio.sleep(DELAY)
 
 
 @suppress(ConnectionClosed)
 async def listen_browser(ws):
     while True:
+        global bounds
         message = json.loads(await ws.get_message())
         bounds = message['data']
-        buses_inside = [bus for bus in buses.values() if is_inside(bounds, bus['lat'], bus['lng'])]
         logger.debug(message)
-        logger.debug(f'{len(buses_inside)} buses inside bounds')
 
 
 async def handle_browser(request):
