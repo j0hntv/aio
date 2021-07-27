@@ -3,6 +3,7 @@ import json
 import logging
 from functools import partial
 
+import asyncclick as click
 import trio
 from trio_websocket import serve_websocket, ConnectionClosed
 
@@ -11,8 +12,6 @@ from utils.decorators import suppress
 
 
 DELAY = 0.5
-FETCH_SOCKET = ('127.0.0.1', 8080)
-SEND_SOCKET = ('127.0.0.1', 8000)
 buses = {}
 logger = logging.getLogger('server')
 
@@ -67,18 +66,41 @@ def setup_logger(logger, level):
     logger.setLevel(level)
 
 
+@click.command()
+@click.option(
+    '--host',
+    default='127.0.0.1',
+    help='Адрес хоста',
+)
+@click.option(
+    '--bus-port',
+    default=8080,
+    help='Порт для имитатора автобусов',
+)
+@click.option(
+    '--browser-port',
+    default=8000,
+    help='Порт для браузера',
+)
+@click.option(
+    '-v',
+    is_flag=True,
+    help='Настройка логирования',
+)
 @suppress(KeyboardInterrupt)
-async def main():
-    setup_logger(logger, level=logging.DEBUG)
+async def main(host, bus_port, browser_port, v):
+    if v:
+        setup_logger(logger, level=logging.DEBUG)
+
     bounds = WindowBounds()
     async with trio.open_nursery() as nursery:
         nursery.start_soon(
-            partial(serve_websocket, fetch_coordinates, *FETCH_SOCKET, ssl_context=None)
+            partial(serve_websocket, fetch_coordinates, host, bus_port, ssl_context=None)
         )
         nursery.start_soon(
-            partial(serve_websocket, partial(handle_browser, bounds=bounds), *SEND_SOCKET, ssl_context=None)
+            partial(serve_websocket, partial(handle_browser, bounds=bounds), host, browser_port, ssl_context=None)
         )
 
 
 if __name__ == '__main__':
-    trio.run(main)
+    main(_anyio_backend="trio")
