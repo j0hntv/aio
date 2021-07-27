@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import logging
 from functools import partial
@@ -5,6 +6,7 @@ from functools import partial
 import trio
 from trio_websocket import serve_websocket, ConnectionClosed
 
+from models import Bus, WindowBounds
 from utils.decorators import suppress
 
 
@@ -12,14 +14,8 @@ DELAY = 1
 FETCH_SOCKET = ('127.0.0.1', 8080)
 SEND_SOCKET = ('127.0.0.1', 8000)
 buses = {}
-bounds = {}
+bounds = WindowBounds()
 logger = logging.getLogger('server')
-
-
-def is_inside(bounds, lat, lng):
-    is_lat_inside = bounds['south_lat'] < lat < bounds['north_lat']
-    is_lng_inside = bounds['west_lng'] < lng < bounds['east_lng']
-    return all((is_lat_inside, is_lng_inside))
 
 
 async def fetch_coordinates(request):
@@ -29,13 +25,13 @@ async def fetch_coordinates(request):
     while True:
         try:
             message = json.loads(await ws.get_message())
-            buses[message['busId']] = message
+            buses[message['busId']] = Bus(**message)
         except ConnectionClosed:
             break
 
 
 async def send_buses(ws):
-    buses_inside = [bus for bus in buses.values() if is_inside(bounds, bus['lat'], bus['lng'])]
+    buses_inside = [dataclasses.asdict(bus) for bus in buses.values() if bus.is_inside(bounds)]
     logger.debug(f'{len(buses_inside)} buses inside bounds')
     message = {
         "msgType": "Buses",
@@ -56,7 +52,7 @@ async def listen_browser(ws):
     while True:
         global bounds
         message = json.loads(await ws.get_message())
-        bounds = message['data']
+        bounds.update(**message['data'])
         logger.debug(message)
 
 
