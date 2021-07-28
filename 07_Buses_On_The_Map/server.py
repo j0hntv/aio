@@ -16,16 +16,14 @@ buses = {}
 logger = logging.getLogger('server')
 
 
+@suppress(ConnectionClosed)
 async def fetch_coordinates(request):
     ws = await request.accept()
     global buses
 
     while True:
-        try:
-            message = json.loads(await ws.get_message())
-            buses[message['busId']] = Bus(**message)
-        except ConnectionClosed:
-            break
+        message = json.loads(await ws.get_message())
+        buses[message['busId']] = Bus(**message)
 
 
 async def send_buses(ws, bounds):
