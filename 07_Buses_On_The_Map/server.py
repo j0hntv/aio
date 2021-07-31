@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from trio_websocket import serve_websocket, ConnectionClosed
 
 from models import Bus, WindowBounds
-from serializers import WindowBoundsSerializer
+from serializers import WindowBoundsSerializer, BusSerializer
 from utils.decorators import suppress
 
 
@@ -34,8 +34,9 @@ async def fetch_coordinates(request):
     global buses
 
     while True:
-        message = json.loads(await ws.get_message())
-        buses[message['busId']] = Bus(**message)
+        message = await ws.get_message()
+        bus = BusSerializer.parse_raw(message).dict()
+        buses[bus['busId']] = Bus(**bus)
 
 
 async def send_buses(ws, bounds):

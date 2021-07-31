@@ -11,3 +11,10 @@ class WindowBoundsDataSerializer(BaseModel):
 class WindowBoundsSerializer(BaseModel):
     msgType: str
     data: WindowBoundsDataSerializer
+
+
+class BusSerializer(BaseModel):
+    busId: str
+    lat: float
+    lng: float
+    route: str
