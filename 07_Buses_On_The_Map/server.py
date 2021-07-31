@@ -34,9 +34,10 @@ async def fetch_coordinates(request):
     global buses
 
     while True:
-        message = await ws.get_message()
-        bus = BusSerializer.parse_raw(message).dict()
-        buses[bus['busId']] = Bus(**bus)
+        async with handle_errors(ws):
+            message = await ws.get_message()
+            bus = BusSerializer.parse_raw(message).dict()
+            buses[bus['busId']] = Bus(**bus)
 
 
 async def send_buses(ws, bounds):
