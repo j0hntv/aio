@@ -12,6 +12,7 @@ from trio_websocket import serve_websocket, ConnectionClosed
 from models import Bus, WindowBounds
 from serializers import WindowBoundsSerializer, BusSerializer
 from utils.decorators import suppress
+from utils.setup import setup_logger
 
 
 DELAY = 0.5
@@ -78,12 +79,6 @@ async def handle_browser(request, bounds):
     async with trio.open_nursery() as nursery:
         nursery.start_soon(talk_to_browser, ws, bounds)
         nursery.start_soon(listen_browser, ws, bounds)
-
-
-def setup_logger(logger, level):
-    handler = logging.StreamHandler()
-    logger.addHandler(handler)
-    logger.setLevel(level)
 
 
 @click.command()

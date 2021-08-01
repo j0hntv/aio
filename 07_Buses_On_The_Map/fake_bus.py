@@ -9,6 +9,7 @@ from trio_websocket import open_websocket_url
 
 from utils.decorators import suppress, relaunch_on_disconnect
 from utils.routes import load_routes
+from utils.setup import setup_logger
 
 
 RELAUNCH_DELAY = 3
@@ -94,7 +95,7 @@ async def main(
 ):
 
     if v:
-        logging.basicConfig(level=logging.DEBUG)
+        setup_logger(logger, level=logging.DEBUG)
 
     try:
         async with trio.open_nursery() as nursery:
@@ -118,7 +119,7 @@ async def main(
                     )
 
     except OSError as ose:
-        print(f'Connection attempt failed: {ose}', file=sys.stderr)
+        logger.error(f'Connection attempt failed: {ose}')
 
 
 if __name__ == '__main__':
