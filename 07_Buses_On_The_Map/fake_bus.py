@@ -75,7 +75,7 @@ async def send_updates(server_address, receive_channel):
 @click.option(
     '--buffer-size',
     default=0,
-    help='The maximum number of items that can be buffered in the channel before send() blocks',
+    help='Максимальное количество элементов, которое может быть буферизовано в канале перед блокировкой',
 )
 @click.option(
     '--directory-path',
