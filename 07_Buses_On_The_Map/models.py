@@ -8,6 +8,9 @@ class WindowBounds:
     east_lng: float = None
     west_lng: float = None
 
+    def is_null(self):
+        return not any((self.south_lat, self.north_lat, self.east_lng, self.west_lng))
+
     def update(self, south_lat, north_lat, east_lng, west_lng):
         self.south_lat = south_lat
         self.north_lat = north_lat
