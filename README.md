@@ -9,3 +9,4 @@
 - [05. Помогаем клубу анонимных геймеров](https://github.com/j0hntv/aio/tree/master/05_Anonymous_Chat_Client)
 - [06. Фильтруем Интернет со скоростью света](https://github.com/j0hntv/aio/tree/master/06_Jaundice_Rate)
 - [07. Следим за автобусами](https://github.com/j0hntv/aio/tree/master/07_Buses_On_The_Map)
+- [08. Рассылаем СМС для МЧС](https://github.com/j0hntv/aio/tree/master/08_Sms_Api_Facade)
